@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Threading.Tasks;
 using Kotoban.Core.Models;
 using Kotoban.Core.Persistence;
@@ -22,7 +24,16 @@ public class Program
         try
         {
             var timestamp = DateTime.UtcNow.ToString("yyyyMMdd'T'HHmmss'Z'");
-            var logFilePath = $"Logs/Kotoban-{timestamp}.log";
+            var assemblyLocation = Assembly.GetExecutingAssembly().Location;
+            var assemblyDirectory = Path.GetDirectoryName(assemblyLocation) ?? Environment.CurrentDirectory;
+            var logFilePath = Path.Combine(assemblyDirectory, "Logs", $"Kotoban-{timestamp}.log");
+
+            // ログファイルを作成する前にディレクトリが存在することを確認
+            var logDirectory = Path.GetDirectoryName(logFilePath);
+            if (!string.IsNullOrEmpty(logDirectory))
+            {
+                Directory.CreateDirectory(logDirectory);
+            }
 
             Log.Logger = new LoggerConfiguration()
                 .MinimumLevel.Debug()
@@ -71,8 +82,12 @@ public class Program
 
         services.AddSingleton<IEntryRepository>(provider =>
         {
+            var assemblyLocation = Assembly.GetExecutingAssembly().Location;
+            var assemblyDirectory = Path.GetDirectoryName(assemblyLocation) ?? Environment.CurrentDirectory;
+            var dataFilePath = Path.Combine(assemblyDirectory, "Kotoban-Data.json");
+
             return new JsonEntryRepository(
-                "Kotoban-Data.json",
+                dataFilePath,
                 JsonRepositoryBackupMode.CreateCopyInTemp
             );
         });

@@ -118,6 +118,14 @@ public class JsonEntryRepository : IEntryRepository
             // ファイル内での一貫した順序を保証するためにリストをソートします
             _items = _items.OrderBy(e => e.CreatedAtUtc).ToList();
             var json = JsonSerializer.Serialize(_items, _jsonOptions);
+
+            // ファイルを保存する前にディレクトリが存在することを確認
+            var directory = Path.GetDirectoryName(_filePath);
+            if (!string.IsNullOrEmpty(directory))
+            {
+                Directory.CreateDirectory(directory);
+            }
+
             await File.WriteAllTextAsync(_filePath, json, Encoding.UTF8);
         }
         catch (Exception ex)

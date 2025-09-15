@@ -7,22 +7,17 @@
 
     <Product>Kotoban</Product>
     <AssemblyTitle>Kotoban Core</AssemblyTitle>
-    <AssemblyName>Kotoban.Core</AssemblyName>
-    <RootNamespace>Kotoban.Core</RootNamespace>
+    <Description>Core library for the Kotoban application, containing models and persistence logic.</Description>
 
     <Version>0.1.0</Version>
+
     <Authors>Yoshinao Inoguchi</Authors>
     <Company>Purrfect Disaster</Company>
-    <Description>Core library for the Kotoban application, containing models and persistence logic.</Description>
     <Copyright>Copyright © 2025 Purrfect Disaster</Copyright>
 
-    <ProjectUrl>https://github.com/nao7sep/Kotoban</ProjectUrl>
     <PackageLicenseExpression>GPL-3.0-or-later</PackageLicenseExpression>
     <RepositoryUrl>https://github.com/nao7sep/Kotoban</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
-
-    <AssemblyVersion>0.1.0.0</AssemblyVersion>
-    <FileVersion>0.1.0.0</FileVersion>
 
   </PropertyGroup>
 
