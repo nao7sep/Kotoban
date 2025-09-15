@@ -152,19 +152,11 @@ public class JsonEntryRepository : IEntryRepository
         if (item.Id != Guid.Empty)
         {
             // SQL 系のデータベースで auto-incremented な ID のところに INSERT コマンドで値を指定するとエラーになりうることを参考に。
-            // GUID はまずぶつからないが、データセットが小さいなら、万が一を考えて重複チェックを行わ「ない」理由もない。
-            // それでも呼び出し側が GUID を指定するのは、初回テスト時に2秒で直せる実装ミスなので、厳しめに対応。
+            // 呼び出し側が GUID を指定するのは、初回テスト時に2秒で直せる実装ミスなので、厳しめに対応。
             throw new InvalidOperationException("Cannot add an entry that already has an ID.");
         }
 
-        Guid newId;
-        do
-        {
-            newId = Guid.NewGuid();
-        }
-        while (_items.Any(i => i.Id == newId));
-
-        item.Id = newId;
+        item.Id = Guid.NewGuid();
         _items.Add(item);
         await SaveDataAsync();
     }

@@ -5,6 +5,25 @@
     <TargetFramework>net9.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+
+    <Product>Kotoban Data Manager</Product>
+    <AssemblyName>Kotoban.DataManager</AssemblyName>
+    <RootNamespace>Kotoban.DataManager</RootNamespace>
+
+    <Version>0.1.0</Version>
+    <Authors>Yoshinao Inoguchi</Authors>
+    <Company>Purrfect Disaster</Company>
+    <Description>A data management tool for the Kotoban application.</Description>
+    <Copyright>Copyright © 2025 Purrfect Disaster</Copyright>
+
+    <ProjectUrl>https://github.com/nao7sep/Kotoban</ProjectUrl>
+    <PackageLicenseExpression>GPL-3.0-or-later</PackageLicenseExpression>
+    <RepositoryUrl>https://github.com/nao7sep/Kotoban</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+
+    <AssemblyVersion>0.1.0.0</AssemblyVersion>
+    <FileVersion>0.1.0.0</FileVersion>
+
   </PropertyGroup>
 
   <ItemGroup>
