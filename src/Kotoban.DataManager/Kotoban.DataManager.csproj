@@ -6,7 +6,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
 
-    <Product>Kotoban Data Manager</Product>
+    <Product>Kotoban</Product>
+    <AssemblyTitle>Kotoban DataManager</AssemblyTitle>
     <AssemblyName>Kotoban.DataManager</AssemblyName>
     <RootNamespace>Kotoban.DataManager</RootNamespace>
 

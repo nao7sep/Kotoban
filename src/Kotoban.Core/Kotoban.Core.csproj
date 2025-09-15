@@ -5,7 +5,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
 
-    <Product>Kotoban Core Library</Product>
+    <Product>Kotoban</Product>
+    <AssemblyTitle>Kotoban Core</AssemblyTitle>
     <AssemblyName>Kotoban.Core</AssemblyName>
     <RootNamespace>Kotoban.Core</RootNamespace>
 
