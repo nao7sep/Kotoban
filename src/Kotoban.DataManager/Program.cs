@@ -122,7 +122,7 @@ public class Program
         while (true)
         {
             Console.WriteLine();
-            Console.WriteLine("=== Kotoban データマネージャー ===");
+            Console.WriteLine("=== メインメニュー ===");
             Console.WriteLine("1. 項目を追加する");
             Console.WriteLine("2. すべての項目を表示する");
             Console.WriteLine("3. 項目を更新する");
@@ -166,11 +166,11 @@ public class Program
     private static async Task AddItemAsync(IEntryRepository repository)
     {
         Console.WriteLine();
-        Console.WriteLine("=== 新しい項目を追加 ===");
+        Console.WriteLine("=== 項目の追加 ===");
 
         var newItem = new Entry();
 
-        while(true)
+        while (true)
         {
             var term = ReadString("用語: ", string.Empty);
             if (!string.IsNullOrWhiteSpace(term))
@@ -195,7 +195,7 @@ public class Program
     private static async Task ViewAllItemsAsync(IEntryRepository repository)
     {
         Console.WriteLine();
-        Console.WriteLine("=== すべての項目 ===");
+        Console.WriteLine("=== 項目一覧 ===");
         var items = await repository.GetAllAsync();
 
         var entryList = items.ToList();
@@ -230,7 +230,7 @@ public class Program
     private static async Task UpdateItemAsync(IEntryRepository repository)
     {
         Console.WriteLine();
-        Console.WriteLine("=== 項目を更新 ===");
+        Console.WriteLine("=== 項目の更新 ===");
         var id = ReadGuid("更新する項目のID: ");
         if (id == Guid.Empty) return;
 
@@ -254,7 +254,7 @@ public class Program
     private static async Task DeleteItemAsync(IEntryRepository repository)
     {
         Console.WriteLine();
-        Console.WriteLine("=== 項目を削除 ===");
+        Console.WriteLine("=== 項目の削除 ===");
         var id = ReadGuid("削除する項目のID: ");
         if (id == Guid.Empty) return;
 
