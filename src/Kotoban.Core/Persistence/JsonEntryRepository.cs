@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using Kotoban.Core.Models;
 
@@ -18,6 +19,7 @@ public class JsonEntryRepository : IEntryRepository
     private readonly string _filePath;
     private readonly JsonRepositoryBackupMode _backupMode;
     private List<Entry> _items = new();
+    private readonly JsonSerializerOptions _jsonOptions;
 
     /// <summary>
     /// JsonEntryRepositoryの新しいインスタンスを初期化します。
@@ -28,6 +30,18 @@ public class JsonEntryRepository : IEntryRepository
     {
         _filePath = filePath;
         _backupMode = backupMode;
+
+        _jsonOptions = new JsonSerializerOptions
+        {
+            WriteIndented = true,
+            Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+        };
+
+        // ここで JsonStringEnumConverter を追加するのは、2つの理由からです。
+        // 1. Entry モデル内の全ての enum (Status プロパティと Explanations ディクショナリのキーである ExplanationLevel) を文字列としてシリアライズ/デシリアライズするため。
+        // 2. モデルクラス自体に特定のシリアライズ形式 (JSON) の詳細が漏れ出すのを防ぎ、関心の分離を維持するため。
+        _jsonOptions.Converters.Add(new JsonStringEnumConverter());
+
         LoadData();
     }
 
@@ -60,7 +74,7 @@ public class JsonEntryRepository : IEntryRepository
 
         // JSONが不正な形式である場合、JsonSerializerは例外をスローし、
         // これは呼び出し元に伝播します。
-        var items = JsonSerializer.Deserialize<List<Entry>>(json) ?? new List<Entry>();
+        var items = JsonSerializer.Deserialize<List<Entry>>(json, _jsonOptions) ?? new List<Entry>();
         _items = items.OrderBy(e => e.CreatedAtUtc).ToList();
     }
 
@@ -103,10 +117,7 @@ public class JsonEntryRepository : IEntryRepository
         {
             // ファイル内での一貫した順序を保証するためにリストをソートします
             _items = _items.OrderBy(e => e.CreatedAtUtc).ToList();
-
-            var options = new JsonSerializerOptions { WriteIndented = true, Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
-            var json = JsonSerializer.Serialize(_items, options);
-
+            var json = JsonSerializer.Serialize(_items, _jsonOptions);
             await File.WriteAllTextAsync(_filePath, json, Encoding.UTF8);
         }
         catch (Exception ex)
