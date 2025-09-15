@@ -56,6 +56,24 @@ public class Program
 
         try
         {
+            var assembly = Assembly.GetExecutingAssembly();
+
+            var assemblyTitle = assembly.GetCustomAttribute<AssemblyTitleAttribute>()?.Title;
+            if (string.IsNullOrEmpty(assemblyTitle))
+            {
+                throw new InvalidOperationException("Assembly title is not defined.");
+            }
+
+            var version = assembly.GetName().Version;
+            if (version == null)
+            {
+                throw new InvalidOperationException("Assembly version is not defined.");
+            }
+
+            var versionString = version.Build == 0 ? $"{version.Major}.{version.Minor}" : version.ToString(3);
+
+            Console.WriteLine($"{assemblyTitle} v{versionString}");
+
             logger.LogInformation("Application starting.");
             await RunApplicationLoop(services);
         }
