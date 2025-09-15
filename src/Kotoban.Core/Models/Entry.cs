@@ -13,6 +13,21 @@ public class Entry
     public Guid Id { get; set; }
 
     /// <summary>
+    /// 学習する単語または概念。
+    /// </summary>
+    public string Term { get; set; } = string.Empty;
+
+    /// <summary>
+    /// AI生成のために用語を明確にするための追加コンテキスト。
+    /// </summary>
+    public string? ContextForAi { get; set; }
+
+    /// <summary>
+    /// ユーザーが追加した個人的なメモ。
+    /// </summary>
+    public string? UserNote { get; set; }
+
+    /// <summary>
     /// アイテムの現在のワークフローステータス。
     /// </summary>
     public EntryStatus Status { get; set; }
@@ -38,29 +53,14 @@ public class Entry
     public DateTime? ApprovedAtUtc { get; set; }
 
     /// <summary>
-    /// 学習する単語または概念。
-    /// </summary>
-    public string Term { get; set; } = string.Empty;
-
-    /// <summary>
-    /// AI生成のために用語を明確にするための追加コンテキスト。
-    /// </summary>
-    public string? ContextForAi { get; set; }
-
-    /// <summary>
-    /// ユーザーが追加した個人的なメモ。
-    /// </summary>
-    public string? UserNote { get; set; }
-
-    /// <summary>
     /// さまざまなレベルの説明を格納します。
     /// </summary>
     public Dictionary<ExplanationLevel, string> Explanations { get; set; } = new();
 
     /// <summary>
-    /// 説明画像のオプションURL。
+    /// 説明画像の相対ファイルパス。
     /// </summary>
-    public string? ImageUrl { get; set; }
+    public string? RelativeImagePath { get; set; }
 
     /// <summary>
     /// AIが画像を生成した際に返された、画像を再現するためのプロンプト。

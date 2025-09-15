@@ -8,6 +8,7 @@ using Kotoban.Core.Persistence;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Serilog;
+using Serilog.Events;
 
 namespace Kotoban.DataManager;
 
@@ -18,10 +19,13 @@ public class Program
 {
     public static async Task Main(string[] args)
     {
+        var timestamp = DateTime.UtcNow.ToString("yyyyMMdd'T'HHmmss'Z'");
+        var logFilePath = $"Logs/Kotoban-{timestamp}.log";
+
         Log.Logger = new LoggerConfiguration()
             .MinimumLevel.Debug()
-            .WriteTo.Console()
-            .WriteTo.File("logs/kotoban_log.txt", rollingInterval: RollingInterval.Day)
+            .WriteTo.Console(restrictedToMinimumLevel: LogEventLevel.Warning)
+            .WriteTo.File(logFilePath)
             .CreateLogger();
 
         var services = ConfigureServices();
@@ -29,17 +33,21 @@ public class Program
 
         try
         {
-            logger.LogInformation("アプリケーションを開始します。");
+            logger.LogInformation("Application starting.");
             await RunApplicationLoop(services);
         }
         catch (Exception ex)
         {
-            logger.LogCritical(ex, "アプリケーションの実行中に致命的なエラーが発生しました。");
+            logger.LogCritical(ex, "An unhandled exception occurred during application execution.");
         }
         finally
         {
-            logger.LogInformation("アプリケーションを終了します。");
+            logger.LogInformation("Application shutting down.");
             await Log.CloseAndFlushAsync();
+
+            Console.Write("何かキーを押して終了します...");
+            Console.ReadKey(intercept: true);
+            Console.WriteLine();
         }
     }
 
@@ -49,10 +57,10 @@ public class Program
 
         services.AddLogging(builder => builder.AddSerilog(dispose: true));
 
-        services.AddSingleton<IEntryRepository>(provider => 
+        services.AddSingleton<IEntryRepository>(provider =>
         {
             return new JsonEntryRepository(
-                "kotoban_data.json", 
+                "Kotoban-Data.json",
                 JsonRepositoryBackupMode.CreateCopyInTemp
             );
         });
@@ -68,7 +76,8 @@ public class Program
 
         while (true)
         {
-            Console.WriteLine("\n--- Kotoban データマネージャー ---");
+            Console.WriteLine();
+            Console.WriteLine("--- Kotoban データマネージャー ---");
             Console.WriteLine("1. 項目を追加する");
             Console.WriteLine("2. すべての項目を表示する");
             Console.WriteLine("3. 項目を更新する");
@@ -97,21 +106,23 @@ public class Program
                     case "5":
                         return;
                     default:
-                        Console.WriteLine("無効な選択です。もう一度お試しください。");
+                        Console.WriteLine("無効な選択です。");
+                        Console.WriteLine("もう一度お試しください。");
                         break;
                 }
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "操作中にエラーが発生しました。");
+                logger.LogError(ex, "An error occurred during the operation.");
             }
         }
     }
 
     private static async Task AddItemAsync(IEntryRepository repository)
     {
-        Console.WriteLine("\n--- 新しい項目を追加 ---");
-        
+        Console.WriteLine();
+        Console.WriteLine("--- 新しい項目を追加 ---");
+
         var newItem = new Entry();
 
         while(true)
@@ -127,17 +138,19 @@ public class Program
 
         newItem.ContextForAi = ReadString("AI用のコンテキスト (オプション): ");
         newItem.UserNote = ReadString("ユーザーメモ (オプション): ");
-        
+
         newItem.Status = EntryStatus.PendingAiGeneration;
         newItem.CreatedAtUtc = DateTime.UtcNow;
 
         await repository.AddAsync(newItem);
-        Console.WriteLine($"項目 '{newItem.Term}' が追加されました。ID: {newItem.Id}");
+        Console.WriteLine($"項目 '{newItem.Term}' が追加されました。");
+        Console.WriteLine($"ID: {newItem.Id}");
     }
 
     private static async Task ViewAllItemsAsync(IEntryRepository repository)
     {
-        Console.WriteLine("\n--- すべての項目 ---");
+        Console.WriteLine();
+        Console.WriteLine("--- すべての項目 ---");
         var items = await repository.GetAllAsync();
 
         var entryList = items.ToList();
@@ -152,7 +165,8 @@ public class Program
             Console.WriteLine($"ID: {item.Id} | 用語: {item.Term} | ステータス: {item.Status}");
         }
 
-        Console.Write("\n詳細を表示したい項目のIDを入力してください（スキップはEnter）: ");
+        Console.WriteLine();
+        Console.Write("詳細を表示したい項目のIDを入力してください（スキップはEnter）: ");
         var idInput = Console.ReadLine();
         if (Guid.TryParse(idInput, out var id))
         {
@@ -170,7 +184,8 @@ public class Program
 
     private static async Task UpdateItemAsync(IEntryRepository repository)
     {
-        Console.WriteLine("\n--- 項目を更新 ---");
+        Console.WriteLine();
+        Console.WriteLine("--- 項目を更新 ---");
         var id = ReadGuid("更新する項目のID: ");
         if (id == Guid.Empty) return;
 
@@ -186,27 +201,6 @@ public class Program
         item.Term = ReadString($"用語 [{item.Term}]: ", item.Term) ?? item.Term;
         item.ContextForAi = ReadString($"AI用のコンテキスト [{item.ContextForAi ?? "なし"}]: ", item.ContextForAi);
         item.UserNote = ReadString($"ユーザーメモ [{item.UserNote ?? "なし"}]: ", item.UserNote);
-        item.ImagePrompt = ReadString($"画像プロンプト [{item.ImagePrompt ?? "なし"}]: ", item.ImagePrompt);
-        item.ImageUrl = ReadString($"画像URL [{item.ImageUrl ?? "なし"}]: ", item.ImageUrl);
-        item.Status = ReadEnum($"ステータス [{item.Status}]: ", item.Status);
-
-        item.ContentGeneratedAtUtc = ReadDateTime($"コンテンツ生成日時 [{item.ContentGeneratedAtUtc}]: ", item.ContentGeneratedAtUtc);
-        item.ImageGeneratedAtUtc = ReadDateTime($"画像生成日時 [{item.ImageGeneratedAtUtc}]: ", item.ImageGeneratedAtUtc);
-        item.ApprovedAtUtc = ReadDateTime($"承認日時 [{item.ApprovedAtUtc}]: ", item.ApprovedAtUtc);
-        
-        Console.WriteLine("説明を更新しますか？ (y/n): ");
-        if (Console.ReadLine()?.ToLower() == "y")
-        {
-            item.Explanations.Clear();
-            foreach (ExplanationLevel level in Enum.GetValues(typeof(ExplanationLevel)))
-            {
-                var explanation = ReadString($"{level}レベルの説明: ");
-                if (!string.IsNullOrWhiteSpace(explanation))
-                {
-                    item.Explanations[level] = explanation;
-                }
-            }
-        }
 
         await repository.UpdateAsync(item);
         Console.WriteLine("項目が更新されました。");
@@ -214,7 +208,8 @@ public class Program
 
     private static async Task DeleteItemAsync(IEntryRepository repository)
     {
-        Console.WriteLine("\n--- 項目を削除 ---");
+        Console.WriteLine();
+        Console.WriteLine("--- 項目を削除 ---");
         var id = ReadGuid("削除する項目のID: ");
         if (id == Guid.Empty) return;
 
@@ -239,7 +234,7 @@ public class Program
         }
     }
 
-    #region Helper Methods
+    #region ヘルパーメソッド
 
     private static string? ReadString(string prompt, string? defaultValue = null)
     {
@@ -258,60 +253,30 @@ public class Program
             {
                 return result;
             }
-            Console.WriteLine("無効なGUID形式です。もう一度お試しください。");
+            Console.WriteLine("無効なGUID形式です。");
+            Console.WriteLine("もう一度お試しください。");
         }
-    }
-    
-    private static T ReadEnum<T>(string prompt, T defaultValue) where T : struct, Enum
-    {
-        Console.Write(prompt);
-        var input = Console.ReadLine();
-        if (string.IsNullOrWhiteSpace(input))
-        {
-            return defaultValue;
-        }
-        if (Enum.TryParse<T>(input, true, out var result) && Enum.IsDefined(typeof(T), result))
-        {
-            return result;
-        }
-        Console.WriteLine($"無効な値です。有効な値: {string.Join(", ", Enum.GetNames<T>())}");
-        return defaultValue;
-    }
-
-    private static DateTime? ReadDateTime(string prompt, DateTime? defaultValue)
-    {
-        Console.Write(prompt);
-        var input = Console.ReadLine();
-        if (string.IsNullOrWhiteSpace(input))
-        {
-            return defaultValue;
-        }
-        if (input.ToLower() == "null" || input.ToLower() == "none")
-        {
-            return null;
-        }
-        if (DateTime.TryParse(input, CultureInfo.CurrentCulture, DateTimeStyles.AssumeUniversal, out var result))
-        {
-            return result.ToUniversalTime();
-        }
-        Console.WriteLine("無効な日時形式です。もう一度お試しください。");
-        return defaultValue;
     }
 
     private static void PrintItemDetails(Entry item)
     {
-        Console.WriteLine("\n--- 項目の詳細 ---");
+        Console.WriteLine();
+        Console.WriteLine("--- 項目の詳細 ---");
         Console.WriteLine($"ID: {item.Id}");
         Console.WriteLine($"用語: {item.Term}");
-        Console.WriteLine($"ユーザーメモ: {item.UserNote ?? "なし"}");
         Console.WriteLine($"AI用コンテキスト: {item.ContextForAi ?? "なし"}");
+        Console.WriteLine($"ユーザーメモ: {item.UserNote ?? "なし"}");
         Console.WriteLine($"ステータス: {item.Status}");
-        
-        Console.WriteLine("\n--- 画像 ---");
-        Console.WriteLine($"画像URL: {item.ImageUrl ?? "なし"}");
-        Console.WriteLine($"画像プロンプト: {item.ImagePrompt ?? "なし"}");
 
-        Console.WriteLine("\n--- 説明 ---");
+        Console.WriteLine();
+        Console.WriteLine("--- タイムスタンプ ---");
+        Console.WriteLine($"作成日時: {item.CreatedAtUtc:yyyy-MM-dd HH:mm:ss} UTC");
+        Console.WriteLine($"コンテンツ生成日時: {(item.ContentGeneratedAtUtc.HasValue ? item.ContentGeneratedAtUtc.Value.ToString("yyyy-MM-dd HH:mm:ss") + " UTC" : "なし")}");
+        Console.WriteLine($"画像生成日時: {(item.ImageGeneratedAtUtc.HasValue ? item.ImageGeneratedAtUtc.Value.ToString("yyyy-MM-dd HH:mm:ss") + " UTC" : "なし")}");
+        Console.WriteLine($"承認日時: {(item.ApprovedAtUtc.HasValue ? item.ApprovedAtUtc.Value.ToString("yyyy-MM-dd HH:mm:ss") + " UTC" : "なし")}");
+
+        Console.WriteLine();
+        Console.WriteLine("--- 説明 ---");
         if (item.Explanations.Any())
         {
             foreach (var (level, text) in item.Explanations)
@@ -323,14 +288,11 @@ public class Program
         {
             Console.WriteLine("  (なし)");
         }
-        
-        Console.WriteLine("\n--- タイムスタンプ ---");
-        Console.WriteLine($"作成日時: {item.CreatedAtUtc:yyyy-MM-dd HH:mm:ss} UTC");
-        Console.WriteLine($"コンテンツ生成日時: {(item.ContentGeneratedAtUtc.HasValue ? item.ContentGeneratedAtUtc.Value.ToString("yyyy-MM-dd HH:mm:ss") + " UTC" : "なし")}");
-        Console.WriteLine($"画像生成日時: {(item.ImageGeneratedAtUtc.HasValue ? item.ImageGeneratedAtUtc.Value.ToString("yyyy-MM-dd HH:mm:ss") + " UTC" : "なし")}");
-        Console.WriteLine($"承認日時: {(item.ApprovedAtUtc.HasValue ? item.ApprovedAtUtc.Value.ToString("yyyy-MM-dd HH:mm:ss") + " UTC" : "なし")}");
 
-        Console.WriteLine("-------------------- ");
+        Console.WriteLine();
+        Console.WriteLine("--- 画像 ---");
+        Console.WriteLine($"画像ファイルパス: {item.RelativeImagePath ?? "なし"}");
+        Console.WriteLine($"画像プロンプト: {item.ImagePrompt ?? "なし"}");
     }
 
     #endregion
