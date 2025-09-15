@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 using Kotoban.Core.Models;
 using Kotoban.Core.Persistence;
@@ -17,19 +16,14 @@ namespace Kotoban.DataManager;
 /// </summary>
 public class Program
 {
-    /// <summary>
-    /// アプリケーションのエントリポイント。
-    /// </summary>
     public static async Task Main(string[] args)
     {
-        // Serilogロガーの設定
         Log.Logger = new LoggerConfiguration()
             .MinimumLevel.Debug()
             .WriteTo.Console()
             .WriteTo.File("logs/kotoban_log.txt", rollingInterval: RollingInterval.Day)
             .CreateLogger();
 
-        // DIコンテナの設定
         var services = ConfigureServices();
         var logger = services.GetRequiredService<ILogger<Program>>();
 
@@ -49,32 +43,28 @@ public class Program
         }
     }
 
-    /// <summary>
-    /// 依存性注入サービスを設定します。
-    /// </summary>
     private static IServiceProvider ConfigureServices()
     {
         var services = new ServiceCollection();
 
         services.AddLogging(builder => builder.AddSerilog(dispose: true));
 
-        services.AddSingleton<ILearningItemRepository>(provider =>
+        services.AddSingleton<IEntryRepository>(provider => 
         {
-            var repoLogger = provider.GetRequiredService<ILogger<JsonLearningItemRepository>>();
-            const string dataFileName = "kotoban_data.json";
-            return new JsonLearningItemRepository(dataFileName, repoLogger);
+            return new JsonEntryRepository(
+                "kotoban_data.json", 
+                JsonRepositoryBackupMode.CreateCopyInTemp
+            );
         });
 
         return services.BuildServiceProvider();
     }
 
-    /// <summary>
-    /// メインの対話型アプリケーションループを実行します。
-    /// </summary>
     private static async Task RunApplicationLoop(IServiceProvider services)
     {
         using var scope = services.CreateScope();
-        var repository = scope.ServiceProvider.GetRequiredService<ILearningItemRepository>();
+        var repository = scope.ServiceProvider.GetRequiredService<IEntryRepository>();
+        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
 
         while (true)
         {
@@ -88,97 +78,80 @@ public class Program
 
             var choice = Console.ReadLine();
 
-            switch (choice)
+            try
             {
-                case "1":
-                    await AddItemAsync(repository);
-                    break;
-                case "2":
-                    await ViewAllItemsAsync(repository);
-                    break;
-                case "3":
-                    await UpdateItemAsync(repository);
-                    break;
-                case "4":
-                    await DeleteItemAsync(repository);
-                    break;
-                case "5":
-                    return; // ループを終了
-                default:
-                    Console.WriteLine("無効な選択です。もう一度お試しください。");
-                    break;
+                switch (choice)
+                {
+                    case "1":
+                        await AddItemAsync(repository);
+                        break;
+                    case "2":
+                        await ViewAllItemsAsync(repository);
+                        break;
+                    case "3":
+                        await UpdateItemAsync(repository);
+                        break;
+                    case "4":
+                        await DeleteItemAsync(repository);
+                        break;
+                    case "5":
+                        return;
+                    default:
+                        Console.WriteLine("無効な選択です。もう一度お試しください。");
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "操作中にエラーが発生しました。");
             }
         }
     }
 
-    /// <summary>
-    /// 新しい学習項目を対話的に追加します。
-    /// </summary>
-    private static async Task AddItemAsync(ILearningItemRepository repository)
+    private static async Task AddItemAsync(IEntryRepository repository)
     {
         Console.WriteLine("\n--- 新しい項目を追加 ---");
-        Console.Write("項目の種類を選択してください (1: Vocabulary, 2: Concept): ");
-        var typeChoice = Console.ReadLine();
+        
+        var newItem = new Entry();
 
-        LearningItem newItem;
-
-        switch (typeChoice)
+        while(true)
         {
-            case "1":
-                newItem = new VocabularyItem();
-                break;
-            case "2":
-                newItem = new ConceptItem();
-                break;
-            default:
-                Console.WriteLine("無効な種類です。");
-                return;
-        }
-
-        newItem.Term = ReadString("用語: ");
-        newItem.ContextForAi = ReadString("AI用のコンテキスト: ");
-        newItem.Status = EntryStatus.PendingAiGeneration;
-
-        if (newItem is VocabularyItem vocabItem)
-        {
-            Console.WriteLine("使用例を入力してください（入力が終わったら空行でEnter）:");
-            while (true)
+            var term = ReadString("用語: ", string.Empty);
+            if (!string.IsNullOrWhiteSpace(term))
             {
-                var example = ReadString(" > ");
-                if (string.IsNullOrWhiteSpace(example))
-                {
-                    break;
-                }
-                vocabItem.UsageExamples.Add(example);
+                newItem.Term = term;
+                break;
             }
+            Console.WriteLine("用語は必須です。");
         }
+
+        newItem.ContextForAi = ReadString("AI用のコンテキスト (オプション): ");
+        newItem.UserNote = ReadString("ユーザーメモ (オプション): ");
+        
+        newItem.Status = EntryStatus.PendingAiGeneration;
+        newItem.CreatedAtUtc = DateTime.UtcNow;
 
         await repository.AddAsync(newItem);
         Console.WriteLine($"項目 '{newItem.Term}' が追加されました。ID: {newItem.Id}");
     }
 
-    /// <summary>
-    /// すべての学習項目を表示し、詳細表示のオプションを提供します。
-    /// </summary>
-    private static async Task ViewAllItemsAsync(ILearningItemRepository repository)
+    private static async Task ViewAllItemsAsync(IEntryRepository repository)
     {
         Console.WriteLine("\n--- すべての項目 ---");
-        var items = (await repository.GetAllAsync()).ToList();
+        var items = await repository.GetAllAsync();
 
-        if (!items.Any())
+        var entryList = items.ToList();
+        if (!entryList.Any())
         {
             Console.WriteLine("表示する項目がありません。");
             return;
         }
 
-        // Display summary
-        foreach (var item in items)
+        foreach (var item in entryList)
         {
-            var itemType = item is VocabularyItem ? "語彙" : "概念";
-            Console.WriteLine($"ID: {item.Id} | タイプ: {itemType} | 用語: {item.Term} | ステータス: {item.Status}");
+            Console.WriteLine($"ID: {item.Id} | 用語: {item.Term} | ステータス: {item.Status}");
         }
 
-        // Option to view details
         Console.Write("\n詳細を表示したい項目のIDを入力してください（スキップはEnter）: ");
         var idInput = Console.ReadLine();
         if (Guid.TryParse(idInput, out var id))
@@ -195,10 +168,7 @@ public class Program
         }
     }
 
-    /// <summary>
-    /// 既存の学習項目を対話的に更新します。
-    /// </summary>
-    private static async Task UpdateItemAsync(ILearningItemRepository repository)
+    private static async Task UpdateItemAsync(IEntryRepository repository)
     {
         Console.WriteLine("\n--- 項目を更新 ---");
         var id = ReadGuid("更新する項目のID: ");
@@ -213,30 +183,17 @@ public class Program
 
         Console.WriteLine("新しい値を入力してください（変更しない場合はEnter）:");
 
-        item.Term = ReadString($"用語 [{item.Term}]: ", item.Term);
-        item.ContextForAi = ReadString($"AI用のコンテキスト [{item.ContextForAi}]: ", item.ContextForAi);
-        item.Status = ReadEnum($"ステータス [{item.Status}]: ", item.Status);
+        item.Term = ReadString($"用語 [{item.Term}]: ", item.Term) ?? item.Term;
+        item.ContextForAi = ReadString($"AI用のコンテキスト [{item.ContextForAi ?? "なし"}]: ", item.ContextForAi);
+        item.UserNote = ReadString($"ユーザーメモ [{item.UserNote ?? "なし"}]: ", item.UserNote);
+        item.ImagePrompt = ReadString($"画像プロンプト [{item.ImagePrompt ?? "なし"}]: ", item.ImagePrompt);
         item.ImageUrl = ReadString($"画像URL [{item.ImageUrl ?? "なし"}]: ", item.ImageUrl);
+        item.Status = ReadEnum($"ステータス [{item.Status}]: ", item.Status);
 
-        if (item is VocabularyItem vocabItem)
-        {
-            Console.WriteLine("現在の使用例:");
-            vocabItem.UsageExamples.ForEach(e => Console.WriteLine($" - {e}"));
-            Console.Write("使用例を更新しますか？ (y/n): ");
-            if (Console.ReadLine()?.ToLower() == "y")
-            {
-                vocabItem.UsageExamples.Clear();
-                Console.WriteLine("新しい使用例を入力してください（入力が終わったら空行でEnter）:");
-                while (true)
-                {
-                    var example = ReadString(" > ");
-                    if (string.IsNullOrWhiteSpace(example)) break;
-                    vocabItem.UsageExamples.Add(example);
-                }
-            }
-        }
+        item.ContentGeneratedAtUtc = ReadDateTime($"コンテンツ生成日時 [{item.ContentGeneratedAtUtc}]: ", item.ContentGeneratedAtUtc);
+        item.ImageGeneratedAtUtc = ReadDateTime($"画像生成日時 [{item.ImageGeneratedAtUtc}]: ", item.ImageGeneratedAtUtc);
+        item.ApprovedAtUtc = ReadDateTime($"承認日時 [{item.ApprovedAtUtc}]: ", item.ApprovedAtUtc);
         
-        // Update Explanations
         Console.WriteLine("説明を更新しますか？ (y/n): ");
         if (Console.ReadLine()?.ToLower() == "y")
         {
@@ -251,15 +208,11 @@ public class Program
             }
         }
 
-
         await repository.UpdateAsync(item);
         Console.WriteLine("項目が更新されました。");
     }
 
-    /// <summary>
-    /// 学習項目を対話的に削除します。
-    /// </summary>
-    private static async Task DeleteItemAsync(ILearningItemRepository repository)
+    private static async Task DeleteItemAsync(IEntryRepository repository)
     {
         Console.WriteLine("\n--- 項目を削除 ---");
         var id = ReadGuid("削除する項目のID: ");
@@ -268,7 +221,7 @@ public class Program
         var item = await repository.GetByIdAsync(id);
         if (item == null)
         {
-            Console.WriteLine("指定されたIDの項目が見つかりません。");
+            Console.WriteLine($"ID '{id}' の項目が見つかりませんでした。");
             return;
         }
 
@@ -288,19 +241,13 @@ public class Program
 
     #region Helper Methods
 
-    /// <summary>
-    /// コンソールから文字列を読み取ります。
-    /// </summary>
-    private static string ReadString(string prompt, string? defaultValue = null)
+    private static string? ReadString(string prompt, string? defaultValue = null)
     {
         Console.Write(prompt);
         var input = Console.ReadLine();
-        return string.IsNullOrWhiteSpace(input) ? defaultValue ?? "" : input!;
+        return string.IsNullOrWhiteSpace(input) ? defaultValue : input;
     }
 
-    /// <summary>
-    /// コンソールからGUIDを読み取ります。
-    /// </summary>
     private static Guid ReadGuid(string prompt)
     {
         while (true)
@@ -315,9 +262,6 @@ public class Program
         }
     }
     
-    /// <summary>
-    /// コンソールからEnum値を読み取ります。
-    /// </summary>
     private static T ReadEnum<T>(string prompt, T defaultValue) where T : struct, Enum
     {
         Console.Write(prompt);
@@ -334,20 +278,40 @@ public class Program
         return defaultValue;
     }
 
-    /// <summary>
-    /// 学習項目の詳細をコンソールに表示します。
-    /// </summary>
-    private static void PrintItemDetails(LearningItem item)
+    private static DateTime? ReadDateTime(string prompt, DateTime? defaultValue)
+    {
+        Console.Write(prompt);
+        var input = Console.ReadLine();
+        if (string.IsNullOrWhiteSpace(input))
+        {
+            return defaultValue;
+        }
+        if (input.ToLower() == "null" || input.ToLower() == "none")
+        {
+            return null;
+        }
+        if (DateTime.TryParse(input, CultureInfo.CurrentCulture, DateTimeStyles.AssumeUniversal, out var result))
+        {
+            return result.ToUniversalTime();
+        }
+        Console.WriteLine("無効な日時形式です。もう一度お試しください。");
+        return defaultValue;
+    }
+
+    private static void PrintItemDetails(Entry item)
     {
         Console.WriteLine("\n--- 項目の詳細 ---");
         Console.WriteLine($"ID: {item.Id}");
-        Console.WriteLine($"種類: {(item is VocabularyItem ? "語彙" : "概念")}");
         Console.WriteLine($"用語: {item.Term}");
-        Console.WriteLine($"AI用コンテキスト: {item.ContextForAi}");
+        Console.WriteLine($"ユーザーメモ: {item.UserNote ?? "なし"}");
+        Console.WriteLine($"AI用コンテキスト: {item.ContextForAi ?? "なし"}");
         Console.WriteLine($"ステータス: {item.Status}");
+        
+        Console.WriteLine("\n--- 画像 ---");
         Console.WriteLine($"画像URL: {item.ImageUrl ?? "なし"}");
+        Console.WriteLine($"画像プロンプト: {item.ImagePrompt ?? "なし"}");
 
-        Console.WriteLine("説明:");
+        Console.WriteLine("\n--- 説明 ---");
         if (item.Explanations.Any())
         {
             foreach (var (level, text) in item.Explanations)
@@ -359,23 +323,14 @@ public class Program
         {
             Console.WriteLine("  (なし)");
         }
+        
+        Console.WriteLine("\n--- タイムスタンプ ---");
+        Console.WriteLine($"作成日時: {item.CreatedAtUtc:yyyy-MM-dd HH:mm:ss} UTC");
+        Console.WriteLine($"コンテンツ生成日時: {(item.ContentGeneratedAtUtc.HasValue ? item.ContentGeneratedAtUtc.Value.ToString("yyyy-MM-dd HH:mm:ss") + " UTC" : "なし")}");
+        Console.WriteLine($"画像生成日時: {(item.ImageGeneratedAtUtc.HasValue ? item.ImageGeneratedAtUtc.Value.ToString("yyyy-MM-dd HH:mm:ss") + " UTC" : "なし")}");
+        Console.WriteLine($"承認日時: {(item.ApprovedAtUtc.HasValue ? item.ApprovedAtUtc.Value.ToString("yyyy-MM-dd HH:mm:ss") + " UTC" : "なし")}");
 
-        if (item is VocabularyItem vocabItem)
-        {
-            Console.WriteLine("使用例:");
-            if (vocabItem.UsageExamples.Any())
-            {
-                foreach (var example in vocabItem.UsageExamples)
-                {
-                    Console.WriteLine($"  - {example}");
-                }
-            }
-            else
-            {
-                Console.WriteLine("  (なし)");
-            }
-        }
-        Console.WriteLine("--------------------");
+        Console.WriteLine("-------------------- ");
     }
 
     #endregion

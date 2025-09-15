@@ -1,0 +1,190 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Text;
+using System.Text.Encodings.Web;
+using System.Text.Json;
+using System.Threading.Tasks;
+using Kotoban.Core.Models;
+
+namespace Kotoban.Core.Persistence;
+
+/// <summary>
+/// 項目をJSONファイルに永続化するためのリポジトリ実装。
+/// </summary>
+public class JsonEntryRepository : IEntryRepository
+{
+    private readonly string _filePath;
+    private readonly JsonRepositoryBackupMode _backupMode;
+    private List<Entry> _items = new();
+
+    /// <summary>
+    /// JsonEntryRepositoryの新しいインスタンスを初期化します。
+    /// </summary>
+    /// <param name="filePath">データが格納されているJSONファイルのパス。</param>
+    /// <param name="backupMode">このリポジトリが使用するバックアップ戦略。</param>
+    public JsonEntryRepository(string filePath, JsonRepositoryBackupMode backupMode)
+    {
+        _filePath = filePath;
+        _backupMode = backupMode;
+        LoadData();
+    }
+
+    /// <summary>
+    /// ファイルからデータをロードし、作成日時でソートします。
+    /// </summary>
+    private void LoadData()
+    {
+        if (!File.Exists(_filePath))
+        {
+            _items = new List<Entry>();
+            return;
+        }
+
+        var json = File.ReadAllText(_filePath, Encoding.UTF8);
+
+        // ファイルが空、空白、またはJSONリテラルの "null" の場合、
+        // 新しい空のリストとして扱います。
+
+        // 分かりにくい AI コメントなので追記: JSON リテラルの "null" は、デシリアライズ時に、構造を持つ JSON でなく単一の「値」として null になる。
+        // Serialize/Deserialize は、カルチャーの影響を受けないラウンドトリップのメソッドとして、JSON 外のコンテキストでも使われつつある。
+        // 入力が空白系文字列でなく null が戻ったなら、"null" だったと考えてよい。
+        // それ以外の、しっかりと壊れている JSON なら、JsonException が投げられる。
+
+        if (string.IsNullOrWhiteSpace(json))
+        {
+            _items = new List<Entry>();
+            return;
+        }
+
+        // JSONが不正な形式である場合、JsonSerializerは例外をスローし、
+        // これは呼び出し元に伝播します。
+        var items = JsonSerializer.Deserialize<List<Entry>>(json) ?? new List<Entry>();
+        _items = items.OrderBy(e => e.CreatedAtUtc).ToList();
+    }
+
+    /// <summary>
+    /// メモリ内のデータをソートしてファイルに非同期で保存します。
+    /// </summary>
+    private async Task SaveDataAsync()
+    {
+        var exceptions = new List<Exception>();
+
+        // バックアップ
+        if (_backupMode == JsonRepositoryBackupMode.CreateCopyInTemp)
+        {
+            try
+            {
+                if (File.Exists(_filePath))
+                {
+                    var backupDir = Path.Combine(Path.GetTempPath(), "KotobanBackups");
+                    Directory.CreateDirectory(backupDir);
+
+                    // 1秒に2回以上のバックアップが行われるケースを想定しにくいので、タイムスタンプの精度はこれで十分。
+                    // 万が一にもそういうことがあったなら、差分がなく無意味なバックアップだろうし、上書き保存なのでたぶん落ちない。
+                    var timestamp = DateTime.UtcNow.ToString("yyyyMMdd'T'HHmmss'Z'");
+                    var originalFileNameWithoutExtension = Path.GetFileNameWithoutExtension(_filePath);
+                    // ディレクトリー名に Backups と入れてあって、中身がそういうものなのが明らかなので、拡張子を .bak などにしない。
+                    var backupFileName = $"{originalFileNameWithoutExtension}-{timestamp}.json";
+                    var backupPath = Path.Combine(backupDir, backupFileName);
+
+                    File.Copy(_filePath, backupPath, true);
+                }
+            }
+            catch (Exception ex)
+            {
+                exceptions.Add(ex);
+            }
+        }
+
+        // ソート、シリアライズ、そして保存
+        try
+        {
+            // ファイル内での一貫した順序を保証するためにリストをソートします
+            _items = _items.OrderBy(e => e.CreatedAtUtc).ToList();
+
+            var options = new JsonSerializerOptions { WriteIndented = true, Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
+            var json = JsonSerializer.Serialize(_items, options);
+
+            await File.WriteAllTextAsync(_filePath, json, Encoding.UTF8);
+        }
+        catch (Exception ex)
+        {
+            exceptions.Add(ex);
+        }
+
+        if (exceptions.Any())
+        {
+            throw new AggregateException("One or more errors occurred during the save operation. See inner exceptions for details.", exceptions);
+        }
+    }
+
+    /// <inheritdoc />
+    public Task<IEnumerable<Entry>> GetAllAsync()
+    {
+        return Task.FromResult<IEnumerable<Entry>>(_items);
+    }
+
+    /// <inheritdoc />
+    public Task<Entry?> GetByIdAsync(Guid id)
+    {
+        // "Get"操作では、項目が見つからないことは例外的な状況ではありません。
+        // 呼び出し元が存在を確認できるように、nullを返します。
+        var item = _items.FirstOrDefault(i => i.Id == id);
+        return Task.FromResult(item);
+    }
+
+    /// <inheritdoc />
+    public async Task AddAsync(Entry item)
+    {
+        if (item.Id != Guid.Empty)
+        {
+            // SQL 系のデータベースで auto-incremented な ID のところに INSERT コマンドで値を指定するとエラーになりうることを参考に。
+            // GUID はまずぶつからないが、データセットが小さいなら、万が一を考えて重複チェックを行わ「ない」理由もない。
+            // それでも呼び出し側が GUID を指定するのは、初回テスト時に2秒で直せる実装ミスなので、厳しめに対応。
+            throw new InvalidOperationException("Cannot add an entry that already has an ID.");
+        }
+
+        Guid newId;
+        do
+        {
+            newId = Guid.NewGuid();
+        }
+        while (_items.Any(i => i.Id == newId));
+
+        item.Id = newId;
+        _items.Add(item);
+        await SaveDataAsync();
+    }
+
+    /// <inheritdoc />
+    public async Task UpdateAsync(Entry item)
+    {
+        var index = _items.FindIndex(i => i.Id == item.Id);
+        if (index != -1)
+        {
+            _items[index] = item;
+            await SaveDataAsync();
+        }
+        else
+        {
+            throw new KeyNotFoundException($"An entry with ID '{item.Id}' was not found and cannot be updated.");
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task DeleteAsync(Guid id)
+    {
+        var item = _items.FirstOrDefault(i => i.Id == id);
+        if (item != null)
+        {
+            _items.Remove(item);
+            await SaveDataAsync();
+        }
+        else
+        {
+            throw new KeyNotFoundException($"An entry with ID '{id}' was not found and cannot be deleted.");
+        }
+    }
+}

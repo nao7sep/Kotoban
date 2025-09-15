@@ -6,17 +6,17 @@ namespace Kotoban.Core.Models;
 public enum ExplanationLevel
 {
     /// <summary>
-    /// 幼児向け（例：ひらがな/カタカナのみ）。
+    /// 未就学児・低学年向け（例：ひらがな/カタカナのみ）。
     /// </summary>
     Easy,
 
     /// <summary>
-    /// 年長の子供向け（例：小学校レベルの漢字）。
+    /// 高学年向け（例：小学校で習う漢字を含む）。
     /// </summary>
     Moderate,
 
     /// <summary>
-    /// 大人または上級学習者向け。
+    /// 中学生以上向け（例：常用漢字を含む）。
     /// </summary>
     Advanced
 }
