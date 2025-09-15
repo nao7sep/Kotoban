@@ -7,6 +7,7 @@ using System.Reflection;
 using System.Threading.Tasks;
 using Kotoban.Core.Models;
 using Kotoban.Core.Persistence;
+using Kotoban.Core.Utils;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Serilog;
@@ -24,16 +25,8 @@ public class Program
         try
         {
             var timestamp = DateTime.UtcNow.ToString("yyyyMMdd'T'HHmmss'Z'");
-            var assemblyLocation = Assembly.GetExecutingAssembly().Location;
-            var assemblyDirectory = Path.GetDirectoryName(assemblyLocation) ?? Environment.CurrentDirectory;
-            var logFilePath = Path.Combine(assemblyDirectory, "Logs", $"Kotoban-{timestamp}.log");
-
-            // ログファイルを作成する前にディレクトリが存在することを確認
-            var logDirectory = Path.GetDirectoryName(logFilePath);
-            if (!string.IsNullOrEmpty(logDirectory))
-            {
-                Directory.CreateDirectory(logDirectory);
-            }
+            var logFilePath = AppPath.GetAbsolutePath(Path.Combine("Logs", $"Kotoban-{timestamp}.log"));
+            DirectoryUtils.EnsureParentDirectoryExists(logFilePath);
 
             Log.Logger = new LoggerConfiguration()
                 .MinimumLevel.Debug()
@@ -100,9 +93,7 @@ public class Program
 
         services.AddSingleton<IEntryRepository>(provider =>
         {
-            var assemblyLocation = Assembly.GetExecutingAssembly().Location;
-            var assemblyDirectory = Path.GetDirectoryName(assemblyLocation) ?? Environment.CurrentDirectory;
-            var dataFilePath = Path.Combine(assemblyDirectory, "Kotoban-Data.json");
+            var dataFilePath = AppPath.GetAbsolutePath("Kotoban-Data.json");
 
             return new JsonEntryRepository(
                 dataFilePath,
