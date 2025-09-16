@@ -7,6 +7,10 @@
     <Nullable>enable</Nullable>
 
     <Product>Kotoban</Product>
+    <!--
+      Mac で実行ファイルが生成されず微妙に困ったので、調査結果と今後の方針をまとめた。
+      https://github.com/nao7sep/coding-notes/blob/main/resolving-macos-execution-issues-with-dotted-dotnet-assembly-names.md
+    -->
     <AssemblyTitle>Kotoban DataManager</AssemblyTitle>
     <Description>A data management tool for the Kotoban application.</Description>
 
