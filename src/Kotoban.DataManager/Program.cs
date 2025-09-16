@@ -10,6 +10,7 @@ using Kotoban.Core.Persistence;
 using Kotoban.Core.Utils;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Configuration;
 using Serilog;
 using Serilog.Events;
 
@@ -24,7 +25,7 @@ public class Program
     {
         try
         {
-            var timestamp = DateTime.UtcNow.ToString("yyyyMMdd'T'HHmmss'Z'");
+            var timestamp = DateTimeUtils.UtcNowTimestamp();
             var logFilePath = AppPath.GetAbsolutePath(Path.Combine("Logs", $"Kotoban-{timestamp}.log"));
             DirectoryUtils.EnsureParentDirectoryExists(logFilePath);
 
@@ -43,7 +44,18 @@ public class Program
             return;
         }
 
-        var services = ConfigureServices();
+        var configuration = new ConfigurationBuilder()
+            .SetBasePath(Directory.GetCurrentDirectory())
+            .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+            .Build();
+
+        var dataFilePath = configuration["DataFilePath"] ?? "Kotoban-Data.json";
+        if (!Path.IsPathFullyQualified(dataFilePath))
+        {
+            dataFilePath = AppPath.GetAbsolutePath(dataFilePath);
+        }
+
+        var services = ConfigureServices(configuration, dataFilePath);
         var logger = services.GetRequiredService<ILogger<Program>>();
 
         try
@@ -65,6 +77,7 @@ public class Program
             var versionString = version.Build == 0 ? $"{version.Major}.{version.Minor}" : version.ToString(3);
 
             Console.WriteLine($"{assemblyTitle} v{versionString}");
+            Console.WriteLine($"Data file: {dataFilePath}");
 
             logger.LogInformation("Application starting.");
             await RunApplicationLoop(services);
@@ -85,16 +98,16 @@ public class Program
         }
     }
 
-    private static IServiceProvider ConfigureServices()
+    private static IServiceProvider ConfigureServices(IConfiguration configuration, string dataFilePath)
     {
         var services = new ServiceCollection();
+
+        services.AddSingleton<IConfiguration>(configuration);
 
         services.AddLogging(builder => builder.AddSerilog(dispose: true));
 
         services.AddSingleton<IEntryRepository>(provider =>
         {
-            var dataFilePath = AppPath.GetAbsolutePath("Kotoban-Data.json");
-
             return new JsonEntryRepository(
                 dataFilePath,
                 JsonRepositoryBackupMode.CreateCopyInTemp
@@ -306,10 +319,10 @@ public class Program
 
         Console.WriteLine();
         Console.WriteLine("=== タイムスタンプ ===");
-        Console.WriteLine($"作成日時: {item.CreatedAtUtc:yyyy-MM-dd HH:mm:ss} UTC");
-        Console.WriteLine($"コンテンツ生成日時: {(item.ContentGeneratedAtUtc.HasValue ? item.ContentGeneratedAtUtc.Value.ToString("yyyy-MM-dd HH:mm:ss") + " UTC" : "なし")}");
-        Console.WriteLine($"画像生成日時: {(item.ImageGeneratedAtUtc.HasValue ? item.ImageGeneratedAtUtc.Value.ToString("yyyy-MM-dd HH:mm:ss") + " UTC" : "なし")}");
-        Console.WriteLine($"承認日時: {(item.ApprovedAtUtc.HasValue ? item.ApprovedAtUtc.Value.ToString("yyyy-MM-dd HH:mm:ss") + " UTC" : "なし")}");
+        Console.WriteLine($"作成日時: {DateTimeUtils.FormatForDisplay(item.CreatedAtUtc)}");
+        Console.WriteLine($"コンテンツ生成日時: {DateTimeUtils.FormatNullableForDisplay(item.ContentGeneratedAtUtc)}");
+        Console.WriteLine($"画像生成日時: {DateTimeUtils.FormatNullableForDisplay(item.ImageGeneratedAtUtc)}");
+        Console.WriteLine($"承認日時: {DateTimeUtils.FormatNullableForDisplay(item.ApprovedAtUtc)}");
 
         Console.WriteLine();
         Console.WriteLine("=== 説明 ===");

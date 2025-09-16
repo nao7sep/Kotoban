@@ -23,6 +23,26 @@ public class JsonEntryRepository : IEntryRepository
     private readonly JsonSerializerOptions _jsonOptions;
 
     /// <summary>
+    /// データストアのファイルパスを取得します。
+    /// </summary>
+    public string DataFilePath => _filePath;
+
+    /// <summary>
+    /// このリポジトリが使用するバックアップ戦略を取得します。
+    /// </summary>
+    public JsonRepositoryBackupMode BackupMode => _backupMode;
+
+    /// <summary>
+    /// 現在メモリにロードされている項目の読み取り専用リストを取得します。
+    /// </summary>
+    public IReadOnlyList<Entry> Items => _items.AsReadOnly();
+
+    /// <summary>
+    /// このリポジトリで使用されるJSONシリアライゼーション設定を取得します。
+    /// </summary>
+    public JsonSerializerOptions JsonOptions => _jsonOptions;
+
+    /// <summary>
     /// JsonEntryRepositoryの新しいインスタンスを初期化します。
     /// </summary>
     /// <param name="filePath">データが格納されているJSONファイルのパス。</param>
@@ -98,7 +118,7 @@ public class JsonEntryRepository : IEntryRepository
 
                     // 1秒に2回以上のバックアップが行われるケースを想定しにくいので、タイムスタンプの精度はこれで十分。
                     // 万が一にもそういうことがあったなら、差分がなく無意味なバックアップだろうし、上書き保存なのでたぶん落ちない。
-                    var timestamp = DateTime.UtcNow.ToString("yyyyMMdd'T'HHmmss'Z'");
+                    var timestamp = DateTimeUtils.UtcNowTimestamp();
                     var originalFileNameWithoutExtension = Path.GetFileNameWithoutExtension(_filePath);
                     // ディレクトリー名に Backups と入れてあって、中身がそういうものなのが明らかなので、拡張子を .bak などにしない。
                     var backupFileName = $"{originalFileNameWithoutExtension}-{timestamp}.json";
