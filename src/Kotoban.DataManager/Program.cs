@@ -38,9 +38,8 @@ public class Program
         {
             Console.WriteLine($"Error initializing logger: {ex}");
 
-            Console.Write("何かキーを押して終了します...");
-            Console.ReadKey(intercept: true);
-            Console.WriteLine();
+            Console.Write("Enter キーを押して終了します...");
+            Console.ReadLine();
             return;
         }
 
@@ -79,9 +78,10 @@ public class Program
             logger.LogInformation("Application shutting down.");
             await Log.CloseAndFlushAsync();
 
-            Console.Write("何かキーを押して終了します...");
-            Console.ReadKey(intercept: true);
-            Console.WriteLine();
+            // Mac で ReadKey が例外を投げたので、ReadLine に変更した。
+            // https://github.com/nao7sep/coding-notes/blob/main/understanding-the-console-readkey-exception-in-a-dotnet-async-finally-block-on-macos.md
+            Console.Write("Enter キーを押して終了します...");
+            Console.ReadLine();
         }
     }
 
