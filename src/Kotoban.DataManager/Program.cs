@@ -55,7 +55,21 @@ public class Program
             dataFilePath = AppPath.GetAbsolutePath(dataFilePath);
         }
 
-        var services = ConfigureServices(configuration, dataFilePath);
+        var maxBackupFiles = configuration.GetValue("MaxBackupFiles", 100);
+
+        var services = new ServiceCollection()
+            .AddSingleton<IConfiguration>(configuration)
+            .AddLogging(builder => builder.AddSerilog(dispose: true))
+            .AddSingleton<IEntryRepository>(provider =>
+            {
+                return new JsonEntryRepository(
+                    dataFilePath,
+                    JsonRepositoryBackupMode.CreateCopyInTemp,
+                    maxBackupFiles
+                );
+            })
+            .BuildServiceProvider();
+
         var logger = services.GetRequiredService<ILogger<Program>>();
 
         try
@@ -96,25 +110,6 @@ public class Program
             Console.Write("Enter キーを押して終了します...");
             Console.ReadLine();
         }
-    }
-
-    private static IServiceProvider ConfigureServices(IConfiguration configuration, string dataFilePath)
-    {
-        var services = new ServiceCollection();
-
-        services.AddSingleton<IConfiguration>(configuration);
-
-        services.AddLogging(builder => builder.AddSerilog(dispose: true));
-
-        services.AddSingleton<IEntryRepository>(provider =>
-        {
-            return new JsonEntryRepository(
-                dataFilePath,
-                JsonRepositoryBackupMode.CreateCopyInTemp
-            );
-        });
-
-        return services.BuildServiceProvider();
     }
 
     private static async Task RunApplicationLoop(IServiceProvider services)
