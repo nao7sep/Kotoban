@@ -166,10 +166,14 @@ public class JsonEntryRepository : IEntryRepository
             {
                 if (_maxBackupFiles > 0)
                 {
-                    var backupFiles = Directory.GetFiles(backupDir, $"{originalFileNameWithoutExtension}-*.json");
+                    var backupFiles = Directory.GetFiles(backupDir)
+                        .Where(f => Path.GetFileName(f).StartsWith(originalFileNameWithoutExtension + "-") &&
+                                    Path.GetExtension(f).Equals(".json", StringComparison.OrdinalIgnoreCase))
+                        .ToArray();
+
                     if (backupFiles.Length > _maxBackupFiles)
                     {
-                        var filesToDelete = backupFiles.OrderBy(f => f).Take(backupFiles.Length - _maxBackupFiles);
+                        var filesToDelete = backupFiles.OrderBy(f => f, StringComparer.OrdinalIgnoreCase).Take(backupFiles.Length - _maxBackupFiles);
                         foreach (var file in filesToDelete)
                         {
                             try
