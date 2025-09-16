@@ -8,6 +8,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using Kotoban.Core.Models;
+using Kotoban.Core.Persistence.Json;
 using Kotoban.Core.Utils;
 
 namespace Kotoban.Core.Persistence;
@@ -70,6 +71,7 @@ public class JsonEntryRepository : IEntryRepository
         // 1. Entry モデル内の全ての enum (Status プロパティと Explanations ディクショナリのキーである ExplanationLevel) を文字列としてシリアライズ/デシリアライズするため。
         // 2. モデルクラス自体に特定のシリアライズ形式 (JSON) の詳細が漏れ出すのを防ぎ、関心の分離を維持するため。
         _jsonOptions.Converters.Add(new JsonStringEnumConverter());
+        _jsonOptions.Converters.Add(new MultilineStringConverter());
 
         LoadData();
     }
