@@ -21,6 +21,15 @@ namespace Kotoban.DataManager;
 /// </summary>
 public class Program
 {
+    private enum AiContentAction
+    {
+        Generate,
+        Regenerate,
+        Approve,
+        Delete,
+        Exit
+    }
+
     public static async Task Main(string[] args)
     {
         try
@@ -150,8 +159,7 @@ public class Program
                     case "5":
                         return;
                     default:
-                        Console.WriteLine("無効な選択です。");
-                        Console.WriteLine("もう一度お試しください。");
+                        Console.WriteLine("無効な選択です。もう一度お試しください。");
                         break;
                 }
             }
@@ -187,17 +195,44 @@ public class Program
         newItem.CreatedAtUtc = DateTime.UtcNow;
 
         await repository.AddAsync(newItem);
-        Console.WriteLine($"項目 '{newItem.Term}' が追加されました。");
-        Console.WriteLine($"ID: {newItem.Id}");
+        Console.WriteLine($"項目 '{newItem.Term}' が追加されました。ID: {newItem.Id}");
+
+        await ShowAiContentMenuAsync(newItem, repository);
     }
 
     private static async Task ViewAllItemsAsync(IEntryRepository repository)
     {
         Console.WriteLine();
         Console.WriteLine("=== 項目一覧 ===");
-        var items = await repository.GetAllAsync();
 
-        var entryList = items.ToList();
+        Console.WriteLine("どのステータスの項目を表示しますか？");
+        Console.WriteLine("1. すべて");
+        Console.WriteLine($"2. AI生成待ち ({EntryStatus.PendingAiGeneration})");
+        Console.WriteLine($"3. 承認待ち ({EntryStatus.PendingApproval})");
+        Console.WriteLine($"4. 承認済み ({EntryStatus.Approved})");
+        Console.Write("選択してください [1]: ");
+
+        var choice = ReadString(string.Empty, "1");
+        var allItems = await repository.GetAllAsync();
+        IEnumerable<Entry> itemsToShow;
+
+        switch (choice)
+        {
+            case "2":
+                itemsToShow = allItems.Where(i => i.Status == EntryStatus.PendingAiGeneration);
+                break;
+            case "3":
+                itemsToShow = allItems.Where(i => i.Status == EntryStatus.PendingApproval);
+                break;
+            case "4":
+                itemsToShow = allItems.Where(i => i.Status == EntryStatus.Approved);
+                break;
+            default:
+                itemsToShow = allItems;
+                break;
+        }
+
+        var entryList = itemsToShow.ToList();
         if (!entryList.Any())
         {
             Console.WriteLine("表示する項目がありません。");
@@ -214,6 +249,7 @@ public class Program
         var idInput = Console.ReadLine();
         if (Guid.TryParse(idInput, out var id))
         {
+            // フィルタリングされたリストではなく、リポジトリから直接IDで項目を取得する必要がある
             var itemToShow = await repository.GetByIdAsync(id);
             if (itemToShow != null)
             {
@@ -240,14 +276,46 @@ public class Program
             return;
         }
 
+        PrintItemDetails(item);
         Console.WriteLine("新しい値を入力してください（変更しない場合はEnter）:");
 
-        item.Term = ReadString($"用語 [{item.Term}]: ", item.Term) ?? item.Term;
-        item.ContextForAi = ReadString($"AI用のコンテキスト [{item.ContextForAi ?? "なし"}]: ", item.ContextForAi);
-        item.UserNote = ReadString($"ユーザーメモ [{item.UserNote ?? "なし"}]: ", item.UserNote);
+        var originalTerm = item.Term;
+        var originalContextForAi = item.ContextForAi;
+        var originalUserNote = item.UserNote;
 
-        await repository.UpdateAsync(item);
-        Console.WriteLine("項目が更新されました。");
+        var newTerm = ReadString($"用語 [{item.Term}]: ", item.Term);
+        var newContextForAi = ReadString($"AI用のコンテキスト [{item.ContextForAi ?? "なし"}]: ", item.ContextForAi);
+        var newUserNote = ReadString($"ユーザーメモ [{item.UserNote ?? "なし"}]: ", item.UserNote);
+
+        var dataHasChanged = newTerm != originalTerm ||
+                             newContextForAi != originalContextForAi ||
+                             newUserNote != originalUserNote;
+
+        if (dataHasChanged)
+        {
+            item.Term = newTerm ?? item.Term;
+            item.ContextForAi = newContextForAi;
+            item.UserNote = newUserNote;
+
+            bool hadAiContent = item.Status != EntryStatus.PendingAiGeneration;
+
+            // まずテキストの変更を保存
+            await repository.UpdateAsync(item);
+            Console.WriteLine("テキスト項目を更新しました。");
+
+            if (hadAiContent)
+            {
+                await DeleteAiContentAsync(item, repository, "項目データが変更されたため、既存のAIコンテンツはクリアされました。");
+            }
+        }
+        else
+        {
+            Console.WriteLine();
+            Console.WriteLine("項目データに変更はありませんでした。");
+        }
+
+        await ShowAiContentMenuAsync(item, repository);
+        Console.WriteLine("項目の更新が完了しました。");
     }
 
     private static async Task DeleteItemAsync(IEntryRepository repository)
@@ -269,12 +337,128 @@ public class Program
 
         if (confirmation?.ToLower() == "y")
         {
+            // データベースから削除する前に、関連ファイルをクリーンアップ
+            await DeleteAiContentAsync(item, repository, null);
             await repository.DeleteAsync(id);
             Console.WriteLine("項目が削除されました。");
         }
         else
         {
             Console.WriteLine("削除はキャンセルされました。");
+        }
+    }
+
+    private static async Task ShowAiContentMenuAsync(Entry item, IEntryRepository repository)
+    {
+        while (true)
+        {
+            Console.WriteLine();
+            Console.WriteLine("=== AIコンテンツ管理メニュー ===");
+            PrintItemDetails(item);
+
+            var options = new Dictionary<string, (AiContentAction Action, string DisplayText)>();
+            var optionIndex = 1;
+
+            if (item.Status == EntryStatus.PendingAiGeneration)
+            {
+                options.Add((optionIndex++).ToString(), (AiContentAction.Generate, "AIコンテンツを生成する"));
+            }
+            else
+            {
+                options.Add((optionIndex++).ToString(), (AiContentAction.Regenerate, "AIコンテンツを再生成する"));
+                if (item.Status == EntryStatus.PendingApproval)
+                {
+                    options.Add((optionIndex++).ToString(), (AiContentAction.Approve, "AIコンテンツを承認する"));
+                }
+                options.Add((optionIndex++).ToString(), (AiContentAction.Delete, "AIコンテンツを削除する"));
+            }
+            options.Add(optionIndex.ToString(), (AiContentAction.Exit, "メインメニューに戻る"));
+
+            foreach (var opt in options)
+            {
+                Console.WriteLine($"{opt.Key}. {opt.Value.DisplayText}");
+            }
+            Console.Write("選択してください: ");
+            var choice = Console.ReadLine();
+
+            if (choice == null || !options.TryGetValue(choice, out var selectedOption))
+            {
+                Console.WriteLine("無効な選択です。");
+                continue;
+            }
+
+            var selectedAction = selectedOption.Action;
+            switch (selectedAction)
+            {
+                case AiContentAction.Generate:
+                case AiContentAction.Regenerate:
+                    await GenerateOrUpdateAiContentAsync(item, repository, selectedAction);
+                    break;
+
+                case AiContentAction.Approve:
+                    await ApproveAiContentAsync(item, repository);
+                    return; // 承認後はメニューを抜ける
+
+                case AiContentAction.Delete:
+                    await DeleteAiContentAsync(item, repository, "AIコンテンツが削除されました。");
+                    break;
+
+                case AiContentAction.Exit:
+                    return;
+            }
+        }
+    }
+
+    private static async Task GenerateOrUpdateAiContentAsync(Entry item, IEntryRepository repository, AiContentAction action)
+    {
+        Console.WriteLine();
+        var actionText = action == AiContentAction.Generate ? "生成" : "再生成";
+        Console.WriteLine($"AIコンテンツの{actionText}機能は現在実装されていません。");
+        await Task.CompletedTask;
+    }
+
+    private static async Task ApproveAiContentAsync(Entry item, IEntryRepository repository)
+    {
+        item.Status = EntryStatus.Approved;
+        item.ApprovedAtUtc = DateTime.UtcNow;
+        await repository.UpdateAsync(item);
+        Console.WriteLine("コンテンツが承認されました。");
+    }
+
+    private static async Task DeleteAiContentAsync(Entry item, IEntryRepository repository, string? completionMessage)
+    {
+        // 画像ファイルの物理削除
+        if (!string.IsNullOrEmpty(item.RelativeImagePath))
+        {
+            try
+            {
+                var imagePath = AppPath.GetAbsolutePath(item.RelativeImagePath);
+                if (File.Exists(imagePath))
+                {
+                    File.Delete(imagePath);
+                }
+            }
+            catch (Exception ex)
+            {
+                // ロギングするが、処理は続行
+                Log.Error(ex, $"画像ファイルの削除に失敗しました: {item.RelativeImagePath}");
+            }
+        }
+
+        // エントリのフィールドをクリア
+        item.Explanations.Clear();
+        item.RelativeImagePath = null;
+        item.ImagePrompt = null;
+        item.ContentGeneratedAtUtc = null;
+        item.ImageGeneratedAtUtc = null;
+        item.ApprovedAtUtc = null;
+        item.Status = EntryStatus.PendingAiGeneration;
+
+        await repository.UpdateAsync(item);
+
+        if (!string.IsNullOrEmpty(completionMessage))
+        {
+            Console.WriteLine(completionMessage);
         }
     }
 
@@ -297,8 +481,38 @@ public class Program
             {
                 return result;
             }
-            Console.WriteLine("無効なGUID形式です。");
-            Console.WriteLine("もう一度お試しください。");
+            Console.WriteLine("無効なGUID形式です。もう一度お試しください。");
+        }
+    }
+
+    /// <summary>
+    /// ユーザーに 'y' または 'n' の入力を求め、bool値を返します。
+    /// </summary>
+    /// <param name="prompt">表示するプロンプト</param>
+    /// <param name="defaultValue">ユーザーがEnterキーのみを押した場合のデフォルト値</param>
+    /// <returns>ユーザーの選択に対応するbool値</returns>
+    private static bool ReadBool(string prompt, bool defaultValue)
+    {
+        var defaultValueString = defaultValue ? "y" : "n";
+        while (true)
+        {
+            var input = ReadString($"{prompt} (y/n) [{defaultValueString}]: ");
+            if (string.IsNullOrWhiteSpace(input))
+            {
+                return defaultValue;
+            }
+
+            if (input.Equals("y", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            if (input.Equals("n", StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            Console.WriteLine("無効な入力です。'y' または 'n' を入力してください。");
         }
     }
 
