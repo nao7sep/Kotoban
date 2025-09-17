@@ -387,24 +387,32 @@ public class Program
                 continue;
             }
 
-            var selectedAction = selectedOption.Action;
-            switch (selectedAction)
+            try
             {
-                case AiContentAction.Generate:
-                case AiContentAction.Regenerate:
-                    await GenerateOrUpdateAiContentAsync(item, repository, selectedAction);
-                    break;
+                var selectedAction = selectedOption.Action;
+                switch (selectedAction)
+                {
+                    case AiContentAction.Generate:
+                    case AiContentAction.Regenerate:
+                        await GenerateOrUpdateAiContentAsync(item, repository, selectedAction);
+                        break;
 
-                case AiContentAction.Approve:
-                    await ApproveAiContentAsync(item, repository);
-                    return; // 承認後はメニューを抜ける
+                    case AiContentAction.Approve:
+                        await ApproveAiContentAsync(item, repository);
+                        return; // 承認後はメニューを抜ける
 
-                case AiContentAction.Delete:
-                    await DeleteAiContentAsync(item, repository, "AIコンテンツが削除されました。");
-                    break;
+                    case AiContentAction.Delete:
+                        await DeleteAiContentAsync(item, repository, "AIコンテンツが削除されました。");
+                        break;
 
-                case AiContentAction.Exit:
-                    return;
+                    case AiContentAction.Exit:
+                        return;
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "An error occurred in the AI Content Menu.");
+                Console.WriteLine("エラーが発生しました。もう一度お試しください。");
             }
         }
     }
