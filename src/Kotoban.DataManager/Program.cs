@@ -427,8 +427,7 @@ public class Program
 
     private static async Task ApproveAiContentAsync(Entry item, IEntryRepository repository)
     {
-        item.Status = EntryStatus.Approved;
-        item.ApprovedAtUtc = DateTime.UtcNow;
+        item.Approve();
         await repository.UpdateAsync(item);
         Console.WriteLine("コンテンツが承認されました。");
     }
@@ -453,14 +452,8 @@ public class Program
             }
         }
 
-        // エントリのフィールドをクリア
-        item.Explanations.Clear();
-        item.RelativeImagePath = null;
-        item.ImagePrompt = null;
-        item.ContentGeneratedAtUtc = null;
-        item.ImageGeneratedAtUtc = null;
-        item.ApprovedAtUtc = null;
-        item.Status = EntryStatus.PendingAiGeneration;
+        // エントリのビジネスロジックを呼び出してフィールドをクリア
+        item.ClearAiContent();
 
         await repository.UpdateAsync(item);
 

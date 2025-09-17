@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
 namespace Kotoban.Core.Models;
@@ -66,4 +68,67 @@ public class Entry
     /// AIが画像を生成した際に返された、画像を再現するためのプロンプト。
     /// </summary>
     public string? ImagePrompt { get; set; }
+
+    #region ビジネスロジック
+
+    /// <summary>
+    /// 生成されたAIの説明を登録します。
+    /// </summary>
+    /// <param name="newExplanations">新しい説明のディクショナリ</param>
+    public void RegisterGeneratedExplanations(Dictionary<ExplanationLevel, string> newExplanations)
+    {
+        Explanations = newExplanations;
+        ContentGeneratedAtUtc = DateTime.UtcNow;
+        UpdateStatusAfterGeneration();
+    }
+
+    /// <summary>
+    /// 生成されたAIの画像を登録します。
+    /// </summary>
+    /// <param name="imagePath">画像の相対パス</param>
+    /// <param name="imagePrompt">画像の生成に使用されたプロンプト</param>
+    public void RegisterGeneratedImage(string imagePath, string imagePrompt)
+    {
+        RelativeImagePath = imagePath;
+        ImagePrompt = imagePrompt;
+        ImageGeneratedAtUtc = DateTime.UtcNow;
+        UpdateStatusAfterGeneration();
+    }
+
+    /// <summary>
+    /// コンテンツが生成または再生成された後にステータスを更新します。
+    /// </summary>
+    private void UpdateStatusAfterGeneration()
+    {
+        Status = EntryStatus.PendingApproval;
+        ApprovedAtUtc = null;
+    }
+
+    /// <summary>
+    /// AIによって生成されたすべてのコンテンツをクリアし、ステータスをリセットします。
+    /// </summary>
+    public void ClearAiContent()
+    {
+        Explanations.Clear();
+        RelativeImagePath = null;
+        ImagePrompt = null;
+        ContentGeneratedAtUtc = null;
+        ImageGeneratedAtUtc = null;
+        ApprovedAtUtc = null;
+        Status = EntryStatus.PendingAiGeneration;
+    }
+
+    /// <summary>
+    /// エントリを承認済みとしてマークします。
+    /// </summary>
+    public void Approve()
+    {
+        if (Status == EntryStatus.PendingApproval)
+        {
+            Status = EntryStatus.Approved;
+            ApprovedAtUtc = DateTime.UtcNow;
+        }
+    }
+
+    #endregion
 }
