@@ -486,37 +486,6 @@ public class Program
         }
     }
 
-    /// <summary>
-    /// ユーザーに 'y' または 'n' の入力を求め、bool値を返します。
-    /// </summary>
-    /// <param name="prompt">表示するプロンプト</param>
-    /// <param name="defaultValue">ユーザーがEnterキーのみを押した場合のデフォルト値</param>
-    /// <returns>ユーザーの選択に対応するbool値</returns>
-    private static bool ReadBool(string prompt, bool defaultValue)
-    {
-        var defaultValueString = defaultValue ? "y" : "n";
-        while (true)
-        {
-            var input = ReadString($"{prompt} (y/n) [{defaultValueString}]: ");
-            if (string.IsNullOrWhiteSpace(input))
-            {
-                return defaultValue;
-            }
-
-            if (input.Equals("y", StringComparison.OrdinalIgnoreCase))
-            {
-                return true;
-            }
-
-            if (input.Equals("n", StringComparison.OrdinalIgnoreCase))
-            {
-                return false;
-            }
-
-            Console.WriteLine("無効な入力です。'y' または 'n' を入力してください。");
-        }
-    }
-
     private static void PrintItemDetails(Entry item)
     {
         Console.WriteLine();
