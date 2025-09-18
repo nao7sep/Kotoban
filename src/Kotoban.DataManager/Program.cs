@@ -11,6 +11,7 @@ using Kotoban.Core.Utils;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Hosting;
 using Serilog;
 using Serilog.Events;
 
@@ -32,78 +33,99 @@ public class Program
 
     public static async Task Main(string[] args)
     {
-        try
-        {
-            var timestamp = DateTimeUtils.UtcNowTimestamp();
-            var logFilePath = AppPath.GetAbsolutePath(Path.Combine("Logs", $"Kotoban-{timestamp}.log"));
-            DirectoryUtils.EnsureParentDirectoryExists(logFilePath);
+        var builder = Host.CreateApplicationBuilder(args);
 
-            Log.Logger = new LoggerConfiguration()
-                .MinimumLevel.Debug()
-                .WriteTo.Console(restrictedToMinimumLevel: LogEventLevel.Warning)
-                .WriteTo.File(logFilePath)
-                .CreateLogger();
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error initializing logger: {ex}");
+        // =============================================================================
 
-            Console.Write("Enterキーを押して終了します...");
-            Console.ReadLine();
-            return;
-        }
+        // Serilogの手動セットアップ（ファイルロギング用）
+        var timestamp = DateTimeUtils.UtcNowTimestamp();
+        var logFilePath = AppPath.GetAbsolutePath(Path.Combine("Logs", $"Kotoban-{timestamp}.log"));
+        DirectoryUtils.EnsureParentDirectoryExists(logFilePath);
 
-        var configuration = new ConfigurationBuilder()
-            .SetBasePath(Directory.GetCurrentDirectory())
-            .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
-            .Build();
+        // 蛇足コメント: Serilog についてよく知らず、Log.Logger にインスタンスをあてがっては、それをサービス登録していた。
+        // コードの後半では Log.Error などを使っていて、たぶん動作は今と同じだったが、DI の徹底により派生開発耐性をつける今の手法とは違った。
 
-        var dataFilePath = configuration["DataFilePath"] ?? "Kotoban-Data.json";
+        var serilogLogger = new LoggerConfiguration()
+            .MinimumLevel.Debug()
+            .WriteTo.Console(restrictedToMinimumLevel: LogEventLevel.Warning)
+            .WriteTo.File(logFilePath)
+            .CreateLogger();
+
+        builder.Logging.ClearProviders();
+        builder.Logging.AddSerilog(serilogLogger, dispose: true);
+
+        // =============================================================================
+
+        // 単一 UI に単一セットのデータが関連づけられる設計なので、そのデータもサービス登録してしまう。
+        // AI がやりだしたときには、「Program.メンバー」または「ほかのクラス.静的メンバー」でよいのではと思った。
+        // しかし、Scoped, Singleton, Transient の違いを学び、サービス登録による拡張性を理解した。
+
+        var dataFilePath = builder.Configuration["DataFilePath"] ?? "Kotoban-Data.json";
         if (!Path.IsPathFullyQualified(dataFilePath))
         {
             dataFilePath = AppPath.GetAbsolutePath(dataFilePath);
         }
+        var maxBackupFiles = builder.Configuration.GetValue("MaxBackupFiles", 100);
 
-        var maxBackupFiles = configuration.GetValue("MaxBackupFiles", 100);
+        builder.Services.AddSingleton<IEntryRepository>(provider =>
+        {
+            return new JsonEntryRepository(
+                dataFilePath,
+                JsonRepositoryBackupMode.CreateCopyInTemp,
+                maxBackupFiles
+            );
+        });
 
-        var services = new ServiceCollection()
-            .AddSingleton<IConfiguration>(configuration)
-            .AddLogging(builder => builder.AddSerilog(dispose: true))
-            .AddSingleton<IEntryRepository>(provider =>
-            {
-                return new JsonEntryRepository(
-                    dataFilePath,
-                    JsonRepositoryBackupMode.CreateCopyInTemp,
-                    maxBackupFiles
-                );
-            })
-            .BuildServiceProvider();
+        // =============================================================================
 
-        var logger = services.GetRequiredService<ILogger<Program>>();
+        // サービス登録が終われば、ビルドしてホストを取る。
+        // こっからは、この構成でいきまっせ～と。
+        var host = builder.Build();
+
+        // ここで logger と先ほどの serilogLogger の違いをちゃんと理解しておくことは非常に重要。
+        // （マイクを GPT-4.1 に）。
+
+        // serilogLogger は Serilog の生のロガーインスタンスであり、Serilog 独自の API（Write, Information, Error など）を直接使ってログ出力できます。
+        // 一方、logger（ILogger<Program>）は Microsoft.Extensions.Logging の抽象ロガーで、DI（依存性注入）経由で取得し、アプリ全体で統一的に利用することが推奨されます。
+        //
+        // AddSerilog で Serilog をロギングプロバイダーとして登録しているため、ILogger<T> で出力したログも最終的には serilogLogger によって処理され、
+        // Serilog の設定（出力先・フォーマット・フィルタなど）が適用されます。
+        //
+        // ここで <Program> となっているのは「ロガーのカテゴリ名」として型名（この場合は "Kotoban.DataManager.Program"）が自動的に付与されるためです。
+        // これにより、ログ出力時に「どのクラスから出たログか」を Serilog 側で判別でき、ログのフィルタリングや出力フォーマットでカテゴリごとの制御が可能になります。
+        //
+        // まとめ：
+        //   - アプリケーションコードでは serilogLogger を直接使わず、ILogger<T>（ここでは ILogger<Program>）を使うのがベストプラクティス。
+        //   - ILogger<T> を使うことで、.NET 標準のロギングAPIの恩恵（DI, カテゴリ分け, テスト容易性など）と Serilog の高機能な出力を両立できる。
+        //   - <T> には通常「現在のクラス名」を指定し、カテゴリごとにログを分けることで、運用・保守・分析がしやすくなる。
+
+        var logger = host.Services.GetRequiredService<ILogger<Program>>();
 
         try
         {
-            var assembly = Assembly.GetExecutingAssembly();
+            // 長々と書いたが、このブロックのほとんどはアプリ名とバージョンの取得。
+            // 今のところほかで必要でない情報なので、ここにベタ書き。
 
+            var assembly = Assembly.GetExecutingAssembly();
             var assemblyTitle = assembly.GetCustomAttribute<AssemblyTitleAttribute>()?.Title;
             if (string.IsNullOrEmpty(assemblyTitle))
             {
                 throw new InvalidOperationException("Assembly title is not defined.");
             }
-
             var version = assembly.GetName().Version;
             if (version == null)
             {
                 throw new InvalidOperationException("Assembly version is not defined.");
             }
-
             var versionString = version.Build == 0 ? $"{version.Major}.{version.Minor}" : version.ToString(3);
-
             Console.WriteLine($"{assemblyTitle} v{versionString}");
+
             Console.WriteLine($"Data file: {dataFilePath}");
 
             logger.LogInformation("Application starting.");
-            await RunApplicationLoop(services);
+
+            // ここで host を丸ごと渡すのはベストプラクティスでないと。
+            await RunApplicationLoop(host.Services);
         }
         catch (Exception ex)
         {
@@ -112,7 +134,20 @@ public class Program
         finally
         {
             logger.LogInformation("Application shutting down.");
-            await Log.CloseAndFlushAsync();
+
+            // SerilogのLoggerはAddSerilog(dispose: true)で登録しているため、
+            // ホストのDispose時に自動的にフラッシュ・クローズされる。
+            // そのため、ここでCloseAndFlushAsyncを明示的に呼ぶ必要はありません。
+
+            // AI コメントに追記: Log を使っていたときには必要だったこと。
+            // 静的プロパティーなので、閉じてフラッシュするタイミングが自分では分からない。
+            // しかし、サービス登録すれば、施設管理者が「そろそろ片づけろ」と言う。
+            //
+            // 静的プロパティーにデータを放り込んでいく構成は、初期化のタイミングが Lazy 頼みになったり、
+            // dispose のことを「プロセスが消えるときにどうせ」と開き直ったりになりがち。
+            // そのあたりもスマートにできそうで、今後の開発ではデフォルトでこのデザインパターンを採用できそう。
+
+            // await logger.CloseAndFlushAsync();
 
             // Mac で ReadKey が例外を投げたので、ReadLine に変更した。
             // https://github.com/nao7sep/coding-notes/blob/main/understanding-the-console-readkey-exception-in-a-dotnet-async-finally-block-on-macos.md
@@ -145,16 +180,16 @@ public class Program
                 switch (choice)
                 {
                     case "1":
-                        await AddItemAsync(repository);
+                        await AddItemAsync(repository, logger);
                         break;
                     case "2":
                         await ViewAllItemsAsync(repository);
                         break;
                     case "3":
-                        await UpdateItemAsync(repository);
+                        await UpdateItemAsync(repository, logger);
                         break;
                     case "4":
-                        await DeleteItemAsync(repository);
+                        await DeleteItemAsync(repository, logger);
                         break;
                     case "5":
                         return;
@@ -170,7 +205,7 @@ public class Program
         }
     }
 
-    private static async Task AddItemAsync(IEntryRepository repository)
+    private static async Task AddItemAsync(IEntryRepository repository, ILogger<Program> logger)
     {
         Console.WriteLine();
         Console.WriteLine("=== 項目の追加 ===");
@@ -197,7 +232,7 @@ public class Program
         await repository.AddAsync(newItem);
         Console.WriteLine($"項目 '{newItem.Term}' が追加されました。ID: {newItem.Id}");
 
-        await ShowAiContentMenuAsync(newItem, repository);
+        await ShowAiContentMenuAsync(newItem, repository, logger);
     }
 
     private static async Task ViewAllItemsAsync(IEntryRepository repository)
@@ -262,7 +297,7 @@ public class Program
         }
     }
 
-    private static async Task UpdateItemAsync(IEntryRepository repository)
+    private static async Task UpdateItemAsync(IEntryRepository repository, ILogger<Program> logger)
     {
         Console.WriteLine();
         Console.WriteLine("=== 項目の更新 ===");
@@ -299,13 +334,19 @@ public class Program
 
             bool hadAiContent = item.Status != EntryStatus.PendingAiGeneration;
 
-            // まずテキストの変更を保存
+            // まずテキストの変更を保存。
+            // DeleteAiContentAsync も保存を行うため、二度手間になっていると AI に怒られることがある。
+            // これは仕様。
+            // UpdateAsync は保存「のみ」を行うと確約されたものでなく、むしろ persistent storage を意識せず「項目の更新」を行うもの。
+            // 実装を追えば確かに瞬間的に二度の保存になって無駄だが、ロジックで考えるなら、保存の処理を伴うかどうか「分からない」UpdateAsync をここで呼ぶことは誤りでない。
+            // エントリーの更新という稀でない処理において微々たるコストが発生するが、論理的な正しさをここでは優先。
+            // DeleteAiContentAsync を「削除」と「保存」に分ける選択肢もあるが、そこまでつくり込むこともないのでこのへんで。
             await repository.UpdateAsync(item);
             Console.WriteLine("テキスト項目を更新しました。");
 
             if (hadAiContent)
             {
-                await DeleteAiContentAsync(item, repository, "項目データが変更されたため、既存のAIコンテンツはクリアされました。");
+                await DeleteAiContentAsync(item, repository, logger, "項目データが変更されたため、既存のAIコンテンツはクリアされました。");
             }
         }
         else
@@ -314,11 +355,11 @@ public class Program
             Console.WriteLine("項目データに変更はありませんでした。");
         }
 
-        await ShowAiContentMenuAsync(item, repository);
+        await ShowAiContentMenuAsync(item, repository, logger);
         Console.WriteLine("項目の更新が完了しました。");
     }
 
-    private static async Task DeleteItemAsync(IEntryRepository repository)
+    private static async Task DeleteItemAsync(IEntryRepository repository, ILogger<Program> logger)
     {
         Console.WriteLine();
         Console.WriteLine("=== 項目の削除 ===");
@@ -337,8 +378,10 @@ public class Program
 
         if (confirmation?.ToLower() == "y")
         {
-            // データベースから削除する前に、関連ファイルをクリーンアップ
-            await DeleteAiContentAsync(item, repository, null);
+            // データベースから削除する前に、関連ファイルをクリーンアップ。
+            // DeleteAiContentAsync は特殊になっていて、メッセージを出力しないことも可能。
+            // ここのように、もっと大きなまとまりが消されたなら、AI コンテンツが消されたと出力する必要はない。
+            await DeleteAiContentAsync(item, repository, logger, completionMessage: null);
             await repository.DeleteAsync(id);
             Console.WriteLine("項目が削除されました。");
         }
@@ -348,7 +391,7 @@ public class Program
         }
     }
 
-    private static async Task ShowAiContentMenuAsync(Entry item, IEntryRepository repository)
+    private static async Task ShowAiContentMenuAsync(Entry item, IEntryRepository repository, ILogger<Program> logger)
     {
         while (true)
         {
@@ -394,7 +437,7 @@ public class Program
                 {
                     case AiContentAction.Generate:
                     case AiContentAction.Regenerate:
-                        await GenerateOrUpdateAiContentAsync(item, repository, selectedAction);
+                        await GenerateOrUpdateAiContentAsync(item, repository, logger, selectedAction);
                         break;
 
                     case AiContentAction.Approve:
@@ -402,7 +445,7 @@ public class Program
                         return; // 承認後はメニューを抜ける
 
                     case AiContentAction.Delete:
-                        await DeleteAiContentAsync(item, repository, "AIコンテンツが削除されました。");
+                        await DeleteAiContentAsync(item, repository, logger, "AIコンテンツが削除されました。");
                         break;
 
                     case AiContentAction.Exit:
@@ -411,13 +454,14 @@ public class Program
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "An error occurred in the AI Content Menu.");
-                Console.WriteLine("エラーが発生しました。もう一度お試しください。");
+                logger.LogError(ex, "An error occurred in the AI Content Menu.");
+                // ちょくちょくありそうなので日本語でも出力することを考えたが、うるささが勝るのでやめておく。
+                // Console.WriteLine("エラーが発生しました。もう一度お試しください。");
             }
         }
     }
 
-    private static async Task GenerateOrUpdateAiContentAsync(Entry item, IEntryRepository repository, AiContentAction action)
+    private static async Task GenerateOrUpdateAiContentAsync(Entry item, IEntryRepository repository, ILogger<Program> logger, AiContentAction action)
     {
         Console.WriteLine();
         var actionText = action == AiContentAction.Generate ? "生成" : "再生成";
@@ -432,7 +476,10 @@ public class Program
         Console.WriteLine("コンテンツが承認されました。");
     }
 
-    private static async Task DeleteAiContentAsync(Entry item, IEntryRepository repository, string? completionMessage)
+    /// <summary>
+    /// ほかのメソッドと異なり、完了時のメッセージがオプションになっている。付近のものとかぶってうるさくなるなら、こちらを黙らせる。
+    /// </summary>
+    private static async Task DeleteAiContentAsync(Entry item, IEntryRepository repository, ILogger<Program> logger, string? completionMessage)
     {
         // 画像ファイルの物理削除
         if (!string.IsNullOrEmpty(item.RelativeImagePath))
@@ -447,8 +494,9 @@ public class Program
             }
             catch (Exception ex)
             {
-                // ロギングするが、処理は続行
-                Log.Error(ex, $"画像ファイルの削除に失敗しました: {item.RelativeImagePath}");
+                // ロギングするが、処理は続行。
+                // コンソールにも出力される。
+                logger.LogError(ex, $"Failed to delete image file: {item.RelativeImagePath}");
             }
         }
 
