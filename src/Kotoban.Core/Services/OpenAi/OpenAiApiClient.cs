@@ -4,6 +4,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using Kotoban.Core.Services.OpenAi.Json;
 using Kotoban.Core.Services.OpenAi.Models;
 
 namespace Kotoban.Core.Services.OpenAi;
@@ -45,7 +46,11 @@ public class OpenAiApiClient
         using var client = _httpClientFactory.CreateClient();
 
         var url = (transport?.ApiBase?.TrimEnd('/') ?? "https://api.openai.com/v1") + "/chat/completions";
-        var json = JsonSerializer.Serialize(request);
+
+        var requestOptions = new JsonSerializerOptions(OpenAiApiJsonOptions.BaseRequestSerializationOptions);
+        requestOptions.Converters.Add(new OpenAiChatRequestConverter());
+        var json = JsonSerializer.Serialize(request, requestOptions);
+
         trace.SetString("request", json);
 
         using var message = new HttpRequestMessage(HttpMethod.Post, url);
@@ -74,7 +79,7 @@ public class OpenAiApiClient
             HandleErrorResponse(response, responseBody, trace);
         }
 
-        var result = JsonSerializer.Deserialize<OpenAiChatResponse>(responseBody);
+        var result = JsonSerializer.Deserialize<OpenAiChatResponse>(responseBody, OpenAiApiJsonOptions.BaseResponseDeserializationOptions);
         if (result == null)
         {
             throw new OpenAiException("Failed to deserialize OpenAI chat response.");
@@ -100,7 +105,7 @@ public class OpenAiApiClient
         using var client = _httpClientFactory.CreateClient();
 
         var url = (transport?.ApiBase?.TrimEnd('/') ?? "https://api.openai.com/v1") + "/images/generations";
-        var json = JsonSerializer.Serialize(request);
+        var json = JsonSerializer.Serialize(request, OpenAiApiJsonOptions.BaseRequestSerializationOptions);
         trace.SetString("request", json);
 
         using var message = new HttpRequestMessage(HttpMethod.Post, url);
@@ -127,7 +132,7 @@ public class OpenAiApiClient
             HandleErrorResponse(response, responseBody, trace);
         }
 
-        var result = JsonSerializer.Deserialize<OpenAiImageResponse>(responseBody);
+        var result = JsonSerializer.Deserialize<OpenAiImageResponse>(responseBody, OpenAiApiJsonOptions.BaseResponseDeserializationOptions);
         if (result == null)
         {
             throw new OpenAiException("Failed to deserialize OpenAI image response.");
@@ -148,7 +153,7 @@ public class OpenAiApiClient
         OpenAiErrorResponse? error = null;
         try
         {
-            error = JsonSerializer.Deserialize<OpenAiErrorResponse>(responseBody);
+            error = JsonSerializer.Deserialize<OpenAiErrorResponse>(responseBody, OpenAiApiJsonOptions.BaseResponseDeserializationOptions);
             if (error != null)
             {
                 // 正常にエラーレスポンスをデシリアライズできた場合
