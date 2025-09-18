@@ -10,18 +10,13 @@ public class OpenAiNetworkSettings
     /// <summary>
     /// OpenAI API リクエストのデフォルトタイムアウト時間。
     /// </summary>
-    public TimeSpan Timeout { get; set; } = TimeSpan.FromSeconds(30);
+    public TimeSpan Timeout { get; set; }
 
     /// <summary>
-    /// 指定されたタイムアウト値で新しいインスタンスを作成します。
+    /// DI用: OpenAiSettings からタイムアウト値を取得して初期化します。
     /// </summary>
-    public OpenAiNetworkSettings(TimeSpan? timeout = null)
+    public OpenAiNetworkSettings(OpenAiSettings settings)
     {
-        Timeout = timeout ?? TimeSpan.FromSeconds(30);
+        Timeout = settings.Timeout;
     }
-
-    /// <summary>
-    /// 設定バインディング用のパラメータなしコンストラクタ。
-    /// </summary>
-    public OpenAiNetworkSettings() { }
 }

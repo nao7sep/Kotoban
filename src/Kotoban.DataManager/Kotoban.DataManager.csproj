@@ -6,6 +6,9 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
 
+    <!-- dotnet user-secrets set "OpenAi:ApiKey" "YOUR_API_KEY" のようにして設定する。 -->
+    <UserSecretsId>2fac3fd4-e9a6-4169-8442-e46875019def</UserSecretsId>
+
     <Product>Kotoban</Product>
     <!--
       Mac で実行ファイルが生成されず微妙に困ったので、調査結果と今後の方針をまとめた。
@@ -23,7 +26,6 @@
     <PackageLicenseExpression>GPL-3.0-or-later</PackageLicenseExpression>
     <RepositoryUrl>https://github.com/nao7sep/Kotoban</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
-
   </PropertyGroup>
 
   <ItemGroup>

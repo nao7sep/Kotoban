@@ -7,6 +7,8 @@ using System.Reflection;
 using System.Threading.Tasks;
 using Kotoban.Core.Models;
 using Kotoban.Core.Persistence;
+using Kotoban.Core.Services.OpenAi;
+using Kotoban.Core.Services.Web;
 using Kotoban.Core.Utils;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -75,6 +77,26 @@ public class Program
                 maxBackupFiles
             );
         });
+
+        // =============================================================================
+
+        var openAiSettings = new OpenAiSettings();
+        // このBindは、"OpenAi"セクションが存在しない場合や値がマッピングできない場合でも例外を投げず、openAiSettingsのプロパティはデフォルト値のままになります。
+        builder.Configuration.GetSection("OpenAi").Bind(openAiSettings);
+        builder.Services.AddSingleton(openAiSettings);
+
+        // OpenAiSettings は DI により OpenAiNetworkSettings や OpenAiRequestFactory のコンストラクタに自動的に注入されます。
+        builder.Services.AddSingleton<OpenAiNetworkSettings>();
+        // OpenAiTransportContext は「トランスポート層の責務」を分離するため個別クラス化しています。
+        // 認証やエンドポイントなど「リクエストモデル」や「ネットワーク設定モデル」に収まらない情報をまとめる用途です。
+        // このアプリではインスタンスが複数必要になる場面はないため、シングルトンで登録しています（シンプルさ優先）。
+        builder.Services.AddSingleton<OpenAiTransportContext>();
+        builder.Services.AddSingleton<OpenAiRequestFactory>();
+
+        // AddHttpClient() は IHttpClientFactory をDIコンテナに登録し、HttpClientのライフサイクル管理や拡張機能を有効にします。
+        builder.Services.AddHttpClient();
+        builder.Services.AddSingleton<OpenAiApiClient>();
+        builder.Services.AddSingleton<WebClient>();
 
         // =============================================================================
 

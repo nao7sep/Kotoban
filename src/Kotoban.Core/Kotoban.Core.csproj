@@ -18,7 +18,6 @@
     <PackageLicenseExpression>GPL-3.0-or-later</PackageLicenseExpression>
     <RepositoryUrl>https://github.com/nao7sep/Kotoban</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
-
   </PropertyGroup>
 
   <ItemGroup>

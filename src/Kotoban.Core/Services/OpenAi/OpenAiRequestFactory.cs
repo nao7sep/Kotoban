@@ -1,13 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
-using Microsoft.Extensions.Configuration;
 using Kotoban.Core.Services.OpenAi.Models;
 
 namespace Kotoban.Core.Services.OpenAi;
 
 /// <summary>
 /// OpenAI API のリクエストを生成するファクトリークラスです。
-/// 必要な設定値は任意の設定セクションから読み込まれます。
 /// </summary>
 public class OpenAiRequestFactory
 {
@@ -32,29 +30,33 @@ public class OpenAiRequestFactory
     public string ImageModel { get; }
 
     /// <summary>
-    /// 任意の設定セクションから設定を読み込みます。
+    /// DI された設定から新しいインスタンスを生成します。
     /// </summary>
-    /// <param name="section">OpenAI 設定セクション</param>
+    /// <param name="settings">OpenAI 設定</param>
     /// <exception cref="InvalidOperationException">必須設定が不足している場合</exception>
-    public OpenAiRequestFactory(IConfiguration section)
+    public OpenAiRequestFactory(OpenAiSettings settings)
     {
-        ApiKey = section["ApiKey"] ?? throw new InvalidOperationException("ApiKey is required.");
-        ApiBase = section["ApiBase"] ?? throw new InvalidOperationException("ApiBase is required.");
-        ChatModel = section["ChatModel"] ?? throw new InvalidOperationException("ChatModel is required.");
-        ImageModel = section["ImageModel"] ?? throw new InvalidOperationException("ImageModel is required.");
-    }
-
-    /// <summary>
-    /// トランスポートコンテキストを作成します。
-    /// </summary>
-    /// <returns>設定されたトランスポートコンテキスト</returns>
-    public OpenAiTransportContext CreateTransportContext()
-    {
-        return new OpenAiTransportContext
+        if (string.IsNullOrEmpty(settings.ApiKey))
         {
-            ApiKey = ApiKey,
-            ApiBase = ApiBase
-        };
+            throw new InvalidOperationException("ApiKey is required.");
+        }
+        if (string.IsNullOrEmpty(settings.ApiBase))
+        {
+            throw new InvalidOperationException("ApiBase is required.");
+        }
+        if (string.IsNullOrEmpty(settings.ChatModel))
+        {
+            throw new InvalidOperationException("ChatModel is required.");
+        }
+        if (string.IsNullOrEmpty(settings.ImageModel))
+        {
+            throw new InvalidOperationException("ImageModel is required.");
+        }
+
+        ApiKey = settings.ApiKey;
+        ApiBase = settings.ApiBase;
+        ChatModel = settings.ChatModel;
+        ImageModel = settings.ImageModel;
     }
 
     /// <summary>
