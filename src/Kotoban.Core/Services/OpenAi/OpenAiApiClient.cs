@@ -71,15 +71,7 @@ public class OpenAiApiClient
 
         if (!response.IsSuccessStatusCode)
         {
-            trace.SetString("error", responseBody);
-            OpenAiErrorResponse? error = null;
-            try
-            {
-                error = JsonSerializer.Deserialize<OpenAiErrorResponse>(responseBody);
-            }
-            catch { }
-            var errorMsg = error?.Error?.Message ?? $"OpenAI API returned error: {response.StatusCode}";
-            throw new OpenAiException(errorMsg, error);
+            HandleErrorResponse(response, responseBody, trace);
         }
 
         var result = JsonSerializer.Deserialize<OpenAiChatResponse>(responseBody);
@@ -132,15 +124,7 @@ public class OpenAiApiClient
 
         if (!response.IsSuccessStatusCode)
         {
-            trace.SetString("error", responseBody);
-            OpenAiErrorResponse? error = null;
-            try
-            {
-                error = JsonSerializer.Deserialize<OpenAiErrorResponse>(responseBody);
-            }
-            catch { }
-            var errorMsg = error?.Error?.Message ?? $"OpenAI API returned error: {response.StatusCode}";
-            throw new OpenAiException(errorMsg, error);
+            HandleErrorResponse(response, responseBody, trace);
         }
 
         var result = JsonSerializer.Deserialize<OpenAiImageResponse>(responseBody);
@@ -149,5 +133,43 @@ public class OpenAiApiClient
             throw new OpenAiException("Failed to deserialize OpenAI image response.");
         }
         return result;
+    }
+
+    /// <summary>
+    /// エラーレスポンスを処理し、適切な OpenAiException を投げます。
+    /// </summary>
+    /// <param name="response">HTTP レスポンス</param>
+    /// <param name="responseBody">レスポンス本文</param>
+    /// <param name="trace">トレース用ディクショナリ</param>
+    /// <exception cref="OpenAiException">常に投げられる例外</exception>
+    private static void HandleErrorResponse(HttpResponseMessage response, string responseBody, OpenAiTraceDictionary trace)
+    {
+        trace.SetString("error", responseBody);
+        OpenAiErrorResponse? error = null;
+        try
+        {
+            error = JsonSerializer.Deserialize<OpenAiErrorResponse>(responseBody);
+            if (error != null)
+            {
+                // 正常にエラーレスポンスをデシリアライズできた場合
+                var errorMsg = error.Error?.Message ?? $"OpenAI API returned error: {response.StatusCode}";
+                throw new OpenAiException(errorMsg, error);
+            }
+            else
+            {
+                // デシリアライズは成功したが結果が null の場合
+                throw new OpenAiException($"OpenAI API returned error: {response.StatusCode}. Failed to parse error response.");
+            }
+        }
+        catch (OpenAiException)
+        {
+            // OpenAiException は再スローする
+            throw;
+        }
+        catch (Exception ex)
+        {
+            // JSON デシリアライゼーション中に例外が発生した場合
+            throw new OpenAiException($"OpenAI API returned error: {response.StatusCode}. Failed to parse error response.", ex);
+        }
     }
 }
