@@ -116,13 +116,15 @@ public class OpenAiRequestFactory
     /// <param name="n">生成する画像の枚数（デフォルト: 1）</param>
     /// <param name="size">画像サイズ（省略可能）</param>
     /// <param name="responseFormat">レスポンス形式（省略可能）</param>
+    /// <param name="additionalData">追加パラメータ（省略可能）</param>
     /// <returns>画像生成リクエスト</returns>
     public OpenAiImageRequest CreateImageRequest(
         string prompt,
-        int n = 1,
+        int? n = null,
         string? size = null,
         string? quality = null,
-        string? responseFormat = null)
+        string? responseFormat = null,
+        Dictionary<string, object>? additionalData = null)
     {
         return new OpenAiImageRequest
         {
@@ -131,7 +133,8 @@ public class OpenAiRequestFactory
             N = n,
             Size = size,
             Quality = quality,
-            ResponseFormat = responseFormat
+            ResponseFormat = responseFormat,
+            AdditionalData = additionalData
         };
     }
 }

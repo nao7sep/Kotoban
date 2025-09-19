@@ -17,7 +17,11 @@ public class OpenAiImageRequestConverter : JsonConverter<OpenAiImageRequest>
         // 標準プロパティをシリアライズ
         writer.WriteString("model", value.Model);
         writer.WriteString("prompt", value.Prompt);
-        writer.WriteNumber("n", value.N);
+
+        if (value.N.HasValue)
+        {
+            writer.WriteNumber("n", value.N.Value);
+        }
 
         if (value.Quality != null)
         {

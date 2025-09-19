@@ -18,7 +18,7 @@ public class OpenAiImageRequest : OpenAiApiObjectBase
     /// <summary>
     /// 画像の生成枚数。
     /// </summary>
-    public int N { get; set; } = 1;
+    public int? N { get; set; }
 
     /// <summary>
     /// 画像の品質（例: "standard", "hd"）。

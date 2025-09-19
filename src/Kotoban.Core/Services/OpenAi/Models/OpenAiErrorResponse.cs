@@ -1,9 +1,9 @@
-﻿namespace Kotoban.Core.Services.OpenAi.Models;
+namespace Kotoban.Core.Services.OpenAi.Models;
 
 /// <summary>
 /// OpenAI API のエラーレスポンスを表すモデルクラスです。
 /// </summary>
-public class OpenAiErrorResponse
+public class OpenAiErrorResponse : OpenAiApiObjectBase
 {
     /// <summary>
     /// エラー情報。
@@ -14,7 +14,7 @@ public class OpenAiErrorResponse
 /// <summary>
 /// OpenAI API のエラー詳細を表すモデルクラスです。
 /// </summary>
-public class OpenAiError
+public class OpenAiError : OpenAiApiObjectBase
 {
     /// <summary>
     /// エラーメッセージ。
