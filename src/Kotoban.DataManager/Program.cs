@@ -240,7 +240,6 @@ public class Program
     private static async Task AddItemAsync(IServiceProvider services)
     {
         var repository = services.GetRequiredService<IEntryRepository>();
-        var logger = services.GetRequiredService<ILogger<Program>>();
 
         Console.WriteLine();
         Console.WriteLine("=== 項目の追加 ===");
@@ -337,7 +336,6 @@ public class Program
     private static async Task UpdateItemAsync(IServiceProvider services)
     {
         var repository = services.GetRequiredService<IEntryRepository>();
-        var logger = services.GetRequiredService<ILogger<Program>>();
 
         Console.WriteLine();
         Console.WriteLine("=== 項目の更新 ===");
@@ -402,7 +400,6 @@ public class Program
     private static async Task DeleteItemAsync(IServiceProvider services)
     {
         var repository = services.GetRequiredService<IEntryRepository>();
-        var logger = services.GetRequiredService<ILogger<Program>>();
 
         Console.WriteLine();
         Console.WriteLine("=== 項目の削除 ===");
@@ -436,7 +433,6 @@ public class Program
 
     private static async Task ShowAiContentMenuAsync(Entry item, IServiceProvider services)
     {
-        var repository = services.GetRequiredService<IEntryRepository>();
         var logger = services.GetRequiredService<ILogger<Program>>();
 
         while (true)
@@ -450,16 +446,16 @@ public class Program
 
             if (item.Status == EntryStatus.PendingAiGeneration)
             {
-                options.Add((optionIndex++).ToString(), (AiContentAction.Generate, "AIコンテンツを生成する"));
+                options.Add(optionIndex++.ToString(), (AiContentAction.Generate, "AIコンテンツを生成する"));
             }
             else
             {
-                options.Add((optionIndex++).ToString(), (AiContentAction.Regenerate, "AIコンテンツを再生成する"));
+                options.Add(optionIndex++.ToString(), (AiContentAction.Regenerate, "AIコンテンツを再生成する"));
                 if (item.Status == EntryStatus.PendingApproval)
                 {
-                    options.Add((optionIndex++).ToString(), (AiContentAction.Approve, "AIコンテンツを承認する"));
+                    options.Add(optionIndex++.ToString(), (AiContentAction.Approve, "AIコンテンツを承認する"));
                 }
-                options.Add((optionIndex++).ToString(), (AiContentAction.Delete, "AIコンテンツを削除する"));
+                options.Add(optionIndex++.ToString(), (AiContentAction.Delete, "AIコンテンツを削除する"));
             }
             options.Add(optionIndex.ToString(), (AiContentAction.Exit, "メインメニューに戻る"));
 
@@ -509,9 +505,6 @@ public class Program
 
     private static async Task GenerateOrUpdateAiContentAsync(Entry item, IServiceProvider services, AiContentAction action)
     {
-        var repository = services.GetRequiredService<IEntryRepository>();
-        var logger = services.GetRequiredService<ILogger<Program>>();
-
         Console.WriteLine();
         var actionText = action == AiContentAction.Generate ? "生成" : "再生成";
         Console.WriteLine($"AIコンテンツの{actionText}機能は現在実装されていません。");
