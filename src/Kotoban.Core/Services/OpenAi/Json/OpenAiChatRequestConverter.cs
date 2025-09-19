@@ -6,7 +6,7 @@ using Kotoban.Core.Services.OpenAi.Models;
 namespace Kotoban.Core.Services.OpenAi.Json;
 
 /// <summary>
-/// OpenAiChatRequest の AdditionalParameters をフラット化するためのカスタム JsonConverter です。
+/// OpenAiChatRequest の AdditionalData をフラット化するためのカスタム JsonConverter です。
 /// </summary>
 public class OpenAiChatRequestConverter : JsonConverter<OpenAiChatRequest>
 {
@@ -19,10 +19,10 @@ public class OpenAiChatRequestConverter : JsonConverter<OpenAiChatRequest>
         writer.WritePropertyName("messages");
         JsonSerializer.Serialize(writer, value.Messages, options);
 
-        // AdditionalParameters をフラット化
-        if (value.AdditionalParameters != null)
+        // AdditionalData をフラット化
+        if (value.AdditionalData != null)
         {
-            foreach (var (key, val) in value.AdditionalParameters)
+            foreach (var (key, val) in value.AdditionalData)
             {
                 writer.WritePropertyName(key);
                 JsonSerializer.Serialize(writer, val, options);

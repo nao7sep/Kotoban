@@ -6,7 +6,7 @@ using Kotoban.Core.Services.OpenAi.Models;
 namespace Kotoban.Core.Services.OpenAi.Json;
 
 /// <summary>
-/// OpenAiImageRequest の AdditionalParameters をフラット化するためのカスタム JsonConverter です。
+/// OpenAiImageRequest の AdditionalData をフラット化するためのカスタム JsonConverter です。
 /// </summary>
 public class OpenAiImageRequestConverter : JsonConverter<OpenAiImageRequest>
 {
@@ -34,10 +34,10 @@ public class OpenAiImageRequestConverter : JsonConverter<OpenAiImageRequest>
             writer.WriteString("response_format", value.ResponseFormat);
         }
 
-        // AdditionalParameters をフラット化
-        if (value.AdditionalParameters != null)
+        // AdditionalData をフラット化
+        if (value.AdditionalData != null)
         {
-            foreach (var (key, val) in value.AdditionalParameters)
+            foreach (var (key, val) in value.AdditionalData)
             {
                 writer.WritePropertyName(key);
                 JsonSerializer.Serialize(writer, val, options);

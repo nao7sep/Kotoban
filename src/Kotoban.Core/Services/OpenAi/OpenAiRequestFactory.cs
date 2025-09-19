@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Kotoban.Core.Services.OpenAi.Models;
 
@@ -63,17 +63,17 @@ public class OpenAiRequestFactory
     /// チャットリクエストを作成します。
     /// </summary>
     /// <param name="messages">メッセージのリスト</param>
-    /// <param name="additionalParameters">追加パラメータ（省略可能）</param>
+    /// <param name="additionalData">追加パラメータ（省略可能）</param>
     /// <returns>チャットリクエスト</returns>
     public OpenAiChatRequest CreateChatRequest(
         List<OpenAiChatMessage> messages,
-        Dictionary<string, object>? additionalParameters = null)
+        Dictionary<string, object>? additionalData = null)
     {
         return new OpenAiChatRequest
         {
             Model = ChatModel,
             Messages = messages,
-            AdditionalParameters = additionalParameters
+            AdditionalData = additionalData
         };
     }
 
@@ -82,12 +82,12 @@ public class OpenAiRequestFactory
     /// </summary>
     /// <param name="userMessage">ユーザーメッセージ</param>
     /// <param name="systemMessage">システムメッセージ（省略可能）</param>
-    /// <param name="additionalParameters">追加パラメータ（省略可能）</param>
+    /// <param name="additionalData">追加パラメータ（省略可能）</param>
     /// <returns>チャットリクエスト</returns>
     public OpenAiChatRequest CreateSimpleChatRequest(
         string userMessage,
         string? systemMessage = null,
-        Dictionary<string, object>? additionalParameters = null)
+        Dictionary<string, object>? additionalData = null)
     {
         var messages = new List<OpenAiChatMessage>();
 
@@ -106,7 +106,7 @@ public class OpenAiRequestFactory
             Content = userMessage
         });
 
-        return CreateChatRequest(messages, additionalParameters);
+        return CreateChatRequest(messages, additionalData);
     }
 
     /// <summary>

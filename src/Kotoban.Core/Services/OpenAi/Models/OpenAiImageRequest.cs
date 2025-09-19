@@ -3,7 +3,7 @@
 /// <summary>
 /// OpenAI 画像生成 API へのリクエストを表すモデルクラスです。
 /// </summary>
-public class OpenAiImageRequest
+public class OpenAiImageRequest : OpenAiApiObjectBase
 {
     /// <summary>
     /// 使用するモデル名。
@@ -34,9 +34,4 @@ public class OpenAiImageRequest
     /// レスポンス形式（"url" または "b64_json"）。
     /// </summary>
     public string? ResponseFormat { get; set; }
-
-    /// <summary>
-    /// 追加のパラメータ（必要に応じて拡張）。
-    /// </summary>
-    public Dictionary<string, object>? AdditionalParameters { get; set; }
 }

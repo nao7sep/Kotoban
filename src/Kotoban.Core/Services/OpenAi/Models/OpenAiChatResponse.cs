@@ -5,7 +5,7 @@ namespace Kotoban.Core.Services.OpenAi.Models;
 /// <summary>
 /// OpenAI Chat API のレスポンスを表すモデルクラスです。
 /// </summary>
-public class OpenAiChatResponse
+public class OpenAiChatResponse : OpenAiApiObjectBase
 {
     /// <summary>
     /// レスポンスの ID。
@@ -36,7 +36,7 @@ public class OpenAiChatResponse
 /// <summary>
 /// OpenAI Chat API の選択肢（生成結果）を表すモデルクラスです。
 /// </summary>
-public class OpenAiChatChoice
+public class OpenAiChatChoice : OpenAiApiObjectBase
 {
     /// <summary>
     /// 選択肢のインデックス。
@@ -57,7 +57,7 @@ public class OpenAiChatChoice
 /// <summary>
 /// OpenAI Chat API の使用量情報を表すモデルクラスです。
 /// </summary>
-public class OpenAiChatUsage
+public class OpenAiChatUsage : OpenAiApiObjectBase
 {
     /// <summary>
     /// プロンプトトークン数。
