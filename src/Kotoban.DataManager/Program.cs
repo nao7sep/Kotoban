@@ -180,9 +180,19 @@ public class Program
 
     private static async Task RunApplicationLoop(IServiceProvider services)
     {
+        // scope とは、app-wide でなく、その中の特定のライフサイクルのこと。
+        // WPF の MainWindows がイメージとして近そう。
+        // それがつくられる前にも、それが破棄されたあとにも、プロセスは存在する。
+        // そこで使うサービスとは別に、MainWindow のスコープでも、そのためのサービスが用意される。
+        // こうやっておけば、たとえば、RunApplicationLoop を複数回実行しても、app-wide なサービスに影響しない。
+        //
+        // という構成により、このメソッドの内部で呼ばれるメソッドには、scope 用の services が渡される。
+        // app-wide のものとの区別のため、メソッドの引数名も scopedServices とすることを考えたが、
+        // scoped がついていてもいなくても受け取るもの次第なので、ただ冗長になる。
+
         using var scope = services.CreateScope();
-        var repository = scope.ServiceProvider.GetRequiredService<IEntryRepository>();
-        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+        var scopedServices = scope.ServiceProvider;
+        var logger = scopedServices.GetRequiredService<ILogger<Program>>();
 
         while (true)
         {
@@ -202,16 +212,16 @@ public class Program
                 switch (choice)
                 {
                     case "1":
-                        await AddItemAsync(repository, logger);
+                        await AddItemAsync(scopedServices);
                         break;
                     case "2":
-                        await ViewAllItemsAsync(repository);
+                        await ViewAllItemsAsync(scopedServices);
                         break;
                     case "3":
-                        await UpdateItemAsync(repository, logger);
+                        await UpdateItemAsync(scopedServices);
                         break;
                     case "4":
-                        await DeleteItemAsync(repository, logger);
+                        await DeleteItemAsync(scopedServices);
                         break;
                     case "5":
                         return;
@@ -227,8 +237,11 @@ public class Program
         }
     }
 
-    private static async Task AddItemAsync(IEntryRepository repository, ILogger<Program> logger)
+    private static async Task AddItemAsync(IServiceProvider services)
     {
+        var repository = services.GetRequiredService<IEntryRepository>();
+        var logger = services.GetRequiredService<ILogger<Program>>();
+
         Console.WriteLine();
         Console.WriteLine("=== 項目の追加 ===");
 
@@ -254,11 +267,13 @@ public class Program
         await repository.AddAsync(newItem);
         Console.WriteLine($"項目 '{newItem.Term}' が追加されました。ID: {newItem.Id}");
 
-        await ShowAiContentMenuAsync(newItem, repository, logger);
+        await ShowAiContentMenuAsync(newItem, services);
     }
 
-    private static async Task ViewAllItemsAsync(IEntryRepository repository)
+    private static async Task ViewAllItemsAsync(IServiceProvider services)
     {
+        var repository = services.GetRequiredService<IEntryRepository>();
+
         Console.WriteLine();
         Console.WriteLine("=== 項目一覧 ===");
 
@@ -319,8 +334,11 @@ public class Program
         }
     }
 
-    private static async Task UpdateItemAsync(IEntryRepository repository, ILogger<Program> logger)
+    private static async Task UpdateItemAsync(IServiceProvider services)
     {
+        var repository = services.GetRequiredService<IEntryRepository>();
+        var logger = services.GetRequiredService<ILogger<Program>>();
+
         Console.WriteLine();
         Console.WriteLine("=== 項目の更新 ===");
         var id = ReadGuid("更新する項目のID: ");
@@ -368,7 +386,7 @@ public class Program
 
             if (hadAiContent)
             {
-                await DeleteAiContentAsync(item, repository, logger, "項目データが変更されたため、既存のAIコンテンツはクリアされました。");
+                await DeleteAiContentAsync(item, services, "項目データが変更されたため、既存のAIコンテンツはクリアされました。");
             }
         }
         else
@@ -377,12 +395,15 @@ public class Program
             Console.WriteLine("項目データに変更はありませんでした。");
         }
 
-        await ShowAiContentMenuAsync(item, repository, logger);
+        await ShowAiContentMenuAsync(item, services);
         Console.WriteLine("項目の更新が完了しました。");
     }
 
-    private static async Task DeleteItemAsync(IEntryRepository repository, ILogger<Program> logger)
+    private static async Task DeleteItemAsync(IServiceProvider services)
     {
+        var repository = services.GetRequiredService<IEntryRepository>();
+        var logger = services.GetRequiredService<ILogger<Program>>();
+
         Console.WriteLine();
         Console.WriteLine("=== 項目の削除 ===");
         var id = ReadGuid("削除する項目のID: ");
@@ -403,7 +424,7 @@ public class Program
             // データベースから削除する前に、関連ファイルをクリーンアップ。
             // DeleteAiContentAsync は特殊になっていて、メッセージを出力しないことも可能。
             // ここのように、もっと大きなまとまりが消されたなら、AI コンテンツが消されたと出力する必要はない。
-            await DeleteAiContentAsync(item, repository, logger, completionMessage: null);
+            await DeleteAiContentAsync(item, services, completionMessage: null);
             await repository.DeleteAsync(id);
             Console.WriteLine("項目が削除されました。");
         }
@@ -413,8 +434,11 @@ public class Program
         }
     }
 
-    private static async Task ShowAiContentMenuAsync(Entry item, IEntryRepository repository, ILogger<Program> logger)
+    private static async Task ShowAiContentMenuAsync(Entry item, IServiceProvider services)
     {
+        var repository = services.GetRequiredService<IEntryRepository>();
+        var logger = services.GetRequiredService<ILogger<Program>>();
+
         while (true)
         {
             Console.WriteLine();
@@ -459,15 +483,15 @@ public class Program
                 {
                     case AiContentAction.Generate:
                     case AiContentAction.Regenerate:
-                        await GenerateOrUpdateAiContentAsync(item, repository, logger, selectedAction);
+                        await GenerateOrUpdateAiContentAsync(item, services, selectedAction);
                         break;
 
                     case AiContentAction.Approve:
-                        await ApproveAiContentAsync(item, repository);
+                        await ApproveAiContentAsync(item, services);
                         return; // 承認後はメニューを抜ける
 
                     case AiContentAction.Delete:
-                        await DeleteAiContentAsync(item, repository, logger, "AIコンテンツが削除されました。");
+                        await DeleteAiContentAsync(item, services, "AIコンテンツが削除されました。");
                         break;
 
                     case AiContentAction.Exit:
@@ -483,16 +507,20 @@ public class Program
         }
     }
 
-    private static async Task GenerateOrUpdateAiContentAsync(Entry item, IEntryRepository repository, ILogger<Program> logger, AiContentAction action)
+    private static async Task GenerateOrUpdateAiContentAsync(Entry item, IServiceProvider services, AiContentAction action)
     {
+        var repository = services.GetRequiredService<IEntryRepository>();
+        var logger = services.GetRequiredService<ILogger<Program>>();
+
         Console.WriteLine();
         var actionText = action == AiContentAction.Generate ? "生成" : "再生成";
         Console.WriteLine($"AIコンテンツの{actionText}機能は現在実装されていません。");
         await Task.CompletedTask;
     }
 
-    private static async Task ApproveAiContentAsync(Entry item, IEntryRepository repository)
+    private static async Task ApproveAiContentAsync(Entry item, IServiceProvider services)
     {
+        var repository = services.GetRequiredService<IEntryRepository>();
         item.Approve();
         await repository.UpdateAsync(item);
         Console.WriteLine("コンテンツが承認されました。");
@@ -501,8 +529,11 @@ public class Program
     /// <summary>
     /// ほかのメソッドと異なり、完了時のメッセージがオプションになっている。付近のものとかぶってうるさくなるなら、こちらを黙らせる。
     /// </summary>
-    private static async Task DeleteAiContentAsync(Entry item, IEntryRepository repository, ILogger<Program> logger, string? completionMessage)
+    private static async Task DeleteAiContentAsync(Entry item, IServiceProvider services, string? completionMessage)
     {
+        var repository = services.GetRequiredService<IEntryRepository>();
+        var logger = services.GetRequiredService<ILogger<Program>>();
+
         // 画像ファイルの物理削除
         if (!string.IsNullOrEmpty(item.RelativeImagePath))
         {
