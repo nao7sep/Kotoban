@@ -125,14 +125,14 @@ public class JsonEntryRepository : IEntryRepository
             {
                 if (File.Exists(_filePath))
                 {
-                    backupDir = Path.Combine(Path.GetTempPath(), "Kotoban-Backups");
+                    backupDir = Path.Combine(Path.GetTempPath(), "Kotoban", "Backups");
                     Directory.CreateDirectory(backupDir);
 
                     // 1秒に2回以上のバックアップが行われるケースを想定しにくいので、タイムスタンプの精度はこれで十分。
                     // 万が一にもそういうことがあったなら、差分がなく無意味なバックアップだろうし、上書き保存なのでたぶん落ちない。
                     var timestamp = DateTimeUtils.UtcNowTimestamp();
                     originalFileNameWithoutExtension = Path.GetFileNameWithoutExtension(_filePath);
-                    // ディレクトリー名に Backups と入れてあって、中身がそういうものなのが明らかなので、拡張子を .bak などにしない。
+                    // ディレクトリーパスに Backups と入れてあって、中身がそういうものなのが明らかなので、拡張子を .bak などにしない。
                     var backupFileName = $"{originalFileNameWithoutExtension}-{timestamp}.json";
                     var backupPath = Path.Combine(backupDir, backupFileName);
 
