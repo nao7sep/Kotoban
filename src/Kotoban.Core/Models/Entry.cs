@@ -15,14 +15,24 @@ public class Entry
     public Guid Id { get; set; }
 
     /// <summary>
-    /// 学習する単語または概念。
+    /// 読みがな。日本語の場合、通常はひらがなで表記されます。
     /// </summary>
-    public string Term { get; set; } = string.Empty;
+    public string Reading { get; set; } = string.Empty;
 
     /// <summary>
-    /// AI生成のために用語を明確にするための追加コンテキスト。
+    /// 表記。日本語の場合、通常は漢字やカタカナが含まれます。
     /// </summary>
-    public string? ContextForAi { get; set; }
+    public string? Expression { get; set; }
+
+    /// <summary>
+    /// 説明生成用のコンテキスト。
+    /// </summary>
+    public string? ExplanationContext { get; set; }
+
+    /// <summary>
+    /// 画像生成用のコンテキスト。
+    /// </summary>
+    public string? ImageContext { get; set; }
 
     /// <summary>
     /// ユーザーが追加した個人的なメモ。
@@ -40,9 +50,9 @@ public class Entry
     public DateTime CreatedAtUtc { get; set; }
 
     /// <summary>
-    /// AIによるコンテンツ生成が完了したUTCタイムスタンプ（オプション）。
+    /// AIによる説明生成が完了したUTCタイムスタンプ（オプション）。
     /// </summary>
-    public DateTime? ContentGeneratedAtUtc { get; set; }
+    public DateTime? ExplanationGeneratedAtUtc { get; set; }
 
     /// <summary>
     /// AIによる画像生成が完了したUTCタイムスタンプ（オプション）。
@@ -66,6 +76,8 @@ public class Entry
 
     /// <summary>
     /// AIが画像を生成した際に返された、画像を再現するためのプロンプト。
+    /// 画像パスが存在していても、このプロパティに値が設定されるとは限りません。
+    /// 画像生成モデルが使用したプロンプトを返さない場合があるためです。
     /// </summary>
     public string? ImagePrompt { get; set; }
 
@@ -78,7 +90,7 @@ public class Entry
     public void RegisterGeneratedExplanations(Dictionary<ExplanationLevel, string> newExplanations)
     {
         Explanations = newExplanations;
-        ContentGeneratedAtUtc = DateTime.UtcNow;
+        ExplanationGeneratedAtUtc = DateTime.UtcNow;
         UpdateStatusAfterGeneration();
     }
 
@@ -112,7 +124,7 @@ public class Entry
         Explanations.Clear();
         RelativeImagePath = null;
         ImagePrompt = null;
-        ContentGeneratedAtUtc = null;
+        ExplanationGeneratedAtUtc = null;
         ImageGeneratedAtUtc = null;
         ApprovedAtUtc = null;
         Status = EntryStatus.PendingAiGeneration;

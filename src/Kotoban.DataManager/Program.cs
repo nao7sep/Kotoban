@@ -248,23 +248,25 @@ public class Program
 
         while (true)
         {
-            var term = ReadString("用語: ", string.Empty);
-            if (!string.IsNullOrWhiteSpace(term))
+            var reading = ReadString("読みがな: ", string.Empty);
+            if (!string.IsNullOrWhiteSpace(reading))
             {
-                newItem.Term = term;
+                newItem.Reading = reading;
                 break;
             }
-            Console.WriteLine("用語は必須です。");
+            Console.WriteLine("読みがなは必須です。");
         }
 
-        newItem.ContextForAi = ReadString("AI用のコンテキスト (オプション): ");
+        newItem.Expression = ReadString("表記 (オプション): ");
+        newItem.ExplanationContext = ReadString("説明生成用のコンテキスト (オプション): ");
+        newItem.ImageContext = ReadString("画像生成用のコンテキスト (オプション): ");
         newItem.UserNote = ReadString("ユーザーメモ (オプション): ");
 
         newItem.Status = EntryStatus.PendingAiGeneration;
         newItem.CreatedAtUtc = DateTime.UtcNow;
 
         await repository.AddAsync(newItem);
-        Console.WriteLine($"項目 '{newItem.Term}' が追加されました。ID: {newItem.Id}");
+        Console.WriteLine($"項目 '{GetDisplayText(newItem)}' が追加されました。ID: {newItem.Id}");
 
         await ShowAiContentMenuAsync(newItem, services);
     }
@@ -312,7 +314,7 @@ public class Program
 
         foreach (var item in entryList)
         {
-            Console.WriteLine($"ID: {item.Id} | 用語: {item.Term} | ステータス: {item.Status}");
+            Console.WriteLine($"ID: {item.Id} | 用語: {GetDisplayText(item)} | ステータス: {item.Status}");
         }
 
         Console.WriteLine();
@@ -352,22 +354,40 @@ public class Program
         PrintItemDetails(item);
         Console.WriteLine("新しい値を入力してください（変更しない場合はEnter）:");
 
-        var originalTerm = item.Term;
-        var originalContextForAi = item.ContextForAi;
+        var originalReading = item.Reading;
+        var originalExpression = item.Expression;
+        var originalExplanationContext = item.ExplanationContext;
+        var originalImageContext = item.ImageContext;
         var originalUserNote = item.UserNote;
 
-        var newTerm = ReadString($"用語 [{item.Term}]: ", item.Term);
-        var newContextForAi = ReadString($"AI用のコンテキスト [{item.ContextForAi ?? "なし"}]: ", item.ContextForAi);
+        string newReading;
+        while (true)
+        {
+            var reading = ReadString($"読みがな [{item.Reading}]: ", item.Reading);
+            if (!string.IsNullOrWhiteSpace(reading))
+            {
+                newReading = reading;
+                break;
+            }
+            Console.WriteLine("読みがなは必須です。");
+        }
+        var newExpression = ReadString($"表記 [{item.Expression ?? "なし"}]: ", item.Expression);
+        var newExplanationContext = ReadString($"説明生成用のコンテキスト [{item.ExplanationContext ?? "なし"}]: ", item.ExplanationContext);
+        var newImageContext = ReadString($"画像生成用のコンテキスト [{item.ImageContext ?? "なし"}]: ", item.ImageContext);
         var newUserNote = ReadString($"ユーザーメモ [{item.UserNote ?? "なし"}]: ", item.UserNote);
 
-        var dataHasChanged = newTerm != originalTerm ||
-                             newContextForAi != originalContextForAi ||
+        var dataHasChanged = newReading != originalReading ||
+                             newExpression != originalExpression ||
+                             newExplanationContext != originalExplanationContext ||
+                             newImageContext != originalImageContext ||
                              newUserNote != originalUserNote;
 
         if (dataHasChanged)
         {
-            item.Term = newTerm ?? item.Term;
-            item.ContextForAi = newContextForAi;
+            item.Reading = newReading;
+            item.Expression = newExpression;
+            item.ExplanationContext = newExplanationContext;
+            item.ImageContext = newImageContext;
             item.UserNote = newUserNote;
 
             bool hadAiContent = item.Status != EntryStatus.PendingAiGeneration;
@@ -413,7 +433,7 @@ public class Program
             return;
         }
 
-        Console.Write($"本当に '{item.Term}' を削除しますか？ (y/n): ");
+        Console.Write($"本当に '{GetDisplayText(item)}' を削除しますか？ (y/n): ");
         var confirmation = Console.ReadLine();
 
         if (confirmation?.ToLower() == "y")
@@ -559,6 +579,15 @@ public class Program
 
     #region ヘルパーメソッド
 
+    private static string GetDisplayText(Entry entry)
+    {
+        if (!string.IsNullOrWhiteSpace(entry.Expression))
+        {
+            return $"{entry.Reading} ({entry.Expression})";
+        }
+        return entry.Reading;
+    }
+
     private static string? ReadString(string prompt, string? defaultValue = null)
     {
         Console.Write(prompt);
@@ -585,15 +614,16 @@ public class Program
         Console.WriteLine();
         Console.WriteLine("=== 項目の詳細 ===");
         Console.WriteLine($"ID: {item.Id}");
-        Console.WriteLine($"用語: {item.Term}");
-        Console.WriteLine($"AI用コンテキスト: {item.ContextForAi ?? "なし"}");
+        Console.WriteLine($"用語: {GetDisplayText(item)}");
+        Console.WriteLine($"説明生成用のコンテキスト: {item.ExplanationContext ?? "なし"}");
+        Console.WriteLine($"画像生成用のコンテキスト: {item.ImageContext ?? "なし"}");
         Console.WriteLine($"ユーザーメモ: {item.UserNote ?? "なし"}");
         Console.WriteLine($"ステータス: {item.Status}");
 
         Console.WriteLine();
         Console.WriteLine("=== タイムスタンプ ===");
         Console.WriteLine($"作成日時: {DateTimeUtils.FormatForDisplay(item.CreatedAtUtc)}");
-        Console.WriteLine($"コンテンツ生成日時: {DateTimeUtils.FormatNullableForDisplay(item.ContentGeneratedAtUtc)}");
+        Console.WriteLine($"説明生成日時: {DateTimeUtils.FormatNullableForDisplay(item.ExplanationGeneratedAtUtc)}");
         Console.WriteLine($"画像生成日時: {DateTimeUtils.FormatNullableForDisplay(item.ImageGeneratedAtUtc)}");
         Console.WriteLine($"承認日時: {DateTimeUtils.FormatNullableForDisplay(item.ApprovedAtUtc)}");
 
