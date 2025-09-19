@@ -2,6 +2,12 @@
 
 namespace Kotoban.Core.Services.OpenAi.Models;
 
+// Responses API も検討した。
+// その前に Chat Completions でつくっちまっていたので、消して Responses API でつくり直すほどの理由もなく、Kotoban では Chat Completions でいく。
+// もっとも、二つを比較しての判断として、今回においては、実装がまだだったとしても Chat Completions でつくっていた可能性が高い。
+// そういったところを今後の参考のために冗長気味に書いておいた。
+// https://github.com/nao7sep/coding-notes/blob/main/strategic-considerations-for-choosing-between-openais-chat-completions-and-responses-apis.md
+
 /// <summary>
 /// OpenAI Chat API へのリクエストを表すモデルクラスです。
 /// </summary>

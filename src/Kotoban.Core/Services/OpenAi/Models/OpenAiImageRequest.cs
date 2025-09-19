@@ -21,6 +21,11 @@ public class OpenAiImageRequest
     public int N { get; set; } = 1;
 
     /// <summary>
+    /// 画像の品質（例: "standard", "hd"）。
+    /// </summary>
+    public string? Quality { get; set; }
+
+    /// <summary>
     /// 画像サイズ（例: "1024x1024"）。
     /// </summary>
     public string? Size { get; set; }
@@ -29,4 +34,9 @@ public class OpenAiImageRequest
     /// レスポンス形式（"url" または "b64_json"）。
     /// </summary>
     public string? ResponseFormat { get; set; }
+
+    /// <summary>
+    /// 追加のパラメータ（必要に応じて拡張）。
+    /// </summary>
+    public Dictionary<string, object>? AdditionalParameters { get; set; }
 }

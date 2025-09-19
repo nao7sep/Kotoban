@@ -121,6 +121,7 @@ public class OpenAiRequestFactory
         string prompt,
         int n = 1,
         string? size = null,
+        string? quality = null,
         string? responseFormat = null)
     {
         return new OpenAiImageRequest
@@ -129,6 +130,7 @@ public class OpenAiRequestFactory
             Prompt = prompt,
             N = n,
             Size = size,
+            Quality = quality,
             ResponseFormat = responseFormat
         };
     }

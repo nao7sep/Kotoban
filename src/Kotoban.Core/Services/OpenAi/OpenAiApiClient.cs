@@ -105,7 +105,9 @@ public class OpenAiApiClient
         using var client = _httpClientFactory.CreateClient();
 
         var url = (transport?.ApiBase?.TrimEnd('/') ?? "https://api.openai.com/v1") + "/images/generations";
-        var json = JsonSerializer.Serialize(request, OpenAiApiJsonOptions.BaseRequestSerializationOptions);
+        var requestOptions = new JsonSerializerOptions(OpenAiApiJsonOptions.BaseRequestSerializationOptions);
+        requestOptions.Converters.Add(new OpenAiImageRequestConverter());
+        var json = JsonSerializer.Serialize(request, requestOptions);
         trace.SetString("request", json);
 
         using var message = new HttpRequestMessage(HttpMethod.Post, url);
