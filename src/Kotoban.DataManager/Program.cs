@@ -134,16 +134,16 @@ public class Program
             {
                 throw new InvalidOperationException("Assembly title is not defined.");
             }
+
             var version = assembly.GetName().Version;
             if (version == null)
             {
                 throw new InvalidOperationException("Assembly version is not defined.");
             }
             var versionString = version.Build == 0 ? $"{version.Major}.{version.Minor}" : version.ToString(3);
+
             Console.WriteLine($"{assemblyTitle} v{versionString}");
-
             Console.WriteLine($"Data file: {dataFilePath}");
-
             logger.LogInformation("Application starting.");
 
             // ここで host を丸ごと渡すのはベストプラクティスでないと。
@@ -258,10 +258,8 @@ public class Program
         }
 
         newItem.Expression = ReadString("表記 (オプション): ");
-        newItem.ExplanationContext = ReadString("説明生成用のコンテキスト (オプション): ");
-        newItem.ImageContext = ReadString("画像生成用のコンテキスト (オプション): ");
+        newItem.GeneralContext = ReadString("一般的なコンテキスト (オプション): ");
         newItem.UserNote = ReadString("ユーザーメモ (オプション): ");
-
         newItem.Status = EntryStatus.PendingAiGeneration;
         newItem.CreatedAtUtc = DateTime.UtcNow;
 
@@ -277,7 +275,6 @@ public class Program
 
         Console.WriteLine();
         Console.WriteLine("=== 項目一覧 ===");
-
         Console.WriteLine("どのステータスの項目を表示しますか？");
         Console.WriteLine("1. すべて");
         Console.WriteLine($"2. AI生成待ち ({EntryStatus.PendingAiGeneration})");
@@ -320,6 +317,7 @@ public class Program
         Console.WriteLine();
         Console.Write("詳細を表示したい項目のIDを入力してください（スキップはEnter）: ");
         var idInput = Console.ReadLine();
+
         if (Guid.TryParse(idInput, out var id))
         {
             // フィルタリングされたリストではなく、リポジトリから直接IDで項目を取得する必要がある
@@ -341,6 +339,7 @@ public class Program
 
         Console.WriteLine();
         Console.WriteLine("=== 項目の更新 ===");
+
         var id = ReadGuid("更新する項目のID: ");
         if (id == Guid.Empty) return;
 
@@ -352,13 +351,13 @@ public class Program
         }
 
         PrintItemDetails(item);
-        Console.WriteLine("新しい値を入力してください（変更しない場合はEnter）:");
 
         var originalReading = item.Reading;
         var originalExpression = item.Expression;
-        var originalExplanationContext = item.ExplanationContext;
-        var originalImageContext = item.ImageContext;
+        var originalGeneralContext = item.GeneralContext;
         var originalUserNote = item.UserNote;
+
+        Console.WriteLine("新しい値を入力してください（変更しない場合はEnter）:");
 
         string newReading;
         while (true)
@@ -371,23 +370,21 @@ public class Program
             }
             Console.WriteLine("読みがなは必須です。");
         }
+
         var newExpression = ReadString($"表記 [{item.Expression ?? "なし"}]: ", item.Expression);
-        var newExplanationContext = ReadString($"説明生成用のコンテキスト [{item.ExplanationContext ?? "なし"}]: ", item.ExplanationContext);
-        var newImageContext = ReadString($"画像生成用のコンテキスト [{item.ImageContext ?? "なし"}]: ", item.ImageContext);
+        var newGeneralContext = ReadString($"一般的なコンテキスト [{item.GeneralContext ?? "なし"}]: ", item.GeneralContext);
         var newUserNote = ReadString($"ユーザーメモ [{item.UserNote ?? "なし"}]: ", item.UserNote);
 
         var dataHasChanged = newReading != originalReading ||
                              newExpression != originalExpression ||
-                             newExplanationContext != originalExplanationContext ||
-                             newImageContext != originalImageContext ||
+                             newGeneralContext != originalGeneralContext ||
                              newUserNote != originalUserNote;
 
         if (dataHasChanged)
         {
             item.Reading = newReading;
             item.Expression = newExpression;
-            item.ExplanationContext = newExplanationContext;
-            item.ImageContext = newImageContext;
+            item.GeneralContext = newGeneralContext;
             item.UserNote = newUserNote;
 
             bool hadAiContent = item.Status != EntryStatus.PendingAiGeneration;
@@ -423,6 +420,7 @@ public class Program
 
         Console.WriteLine();
         Console.WriteLine("=== 項目の削除 ===");
+
         var id = ReadGuid("削除する項目のID: ");
         if (id == Guid.Empty) return;
 
@@ -615,6 +613,7 @@ public class Program
         Console.WriteLine("=== 項目の詳細 ===");
         Console.WriteLine($"ID: {item.Id}");
         Console.WriteLine($"用語: {GetDisplayText(item)}");
+        Console.WriteLine($"一般的なコンテキスト: {item.GeneralContext ?? "なし"}");
         Console.WriteLine($"説明生成用のコンテキスト: {item.ExplanationContext ?? "なし"}");
         Console.WriteLine($"画像生成用のコンテキスト: {item.ImageContext ?? "なし"}");
         Console.WriteLine($"ユーザーメモ: {item.UserNote ?? "なし"}");

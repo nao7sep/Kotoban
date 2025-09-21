@@ -25,6 +25,11 @@ public class Entry
     public string? Expression { get; set; }
 
     /// <summary>
+    /// AIが単語を特定するための一般的なコンテキスト。
+    /// </summary>
+    public string? GeneralContext { get; set; }
+
+    /// <summary>
     /// 説明生成用のコンテキスト。
     /// </summary>
     public string? ExplanationContext { get; set; }
