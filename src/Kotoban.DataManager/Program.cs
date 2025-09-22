@@ -243,6 +243,38 @@ public class Program
         }
     }
 
+    private static async Task<bool> CheckForDuplicatesAsync(IServiceProvider services, string reading, Guid? excludeId = null)
+    {
+        var repository = services.GetRequiredService<IEntryRepository>();
+
+        var allItems = await repository.GetAllAsync();
+        var query = allItems.Where(e => string.Equals(e.Reading, reading, StringComparison.OrdinalIgnoreCase));
+
+        if (excludeId.HasValue)
+        {
+            query = query.Where(e => e.Id != excludeId.Value);
+        }
+
+        var duplicates = query.ToList();
+
+        if (duplicates.Any())
+        {
+            Console.WriteLine("同じ読みがなを持つ既存の項目が見つかりました。");
+            foreach (var dup in duplicates)
+            {
+                Console.WriteLine($"ID: {dup.Id} | 用語: {GetDisplayText(dup)} | ステータス: {dup.Status}");
+            }
+
+            var proceed = ReadString("このまま続行しますか？ (y/n): ", "n");
+            if (!string.Equals(proceed, "y", StringComparison.OrdinalIgnoreCase))
+            {
+                return false; // キャンセル
+            }
+        }
+
+        return true; // 続行
+    }
+
     private static async Task AddItemAsync(IServiceProvider services)
     {
         var repository = services.GetRequiredService<IEntryRepository>();
@@ -263,32 +295,11 @@ public class Program
             Console.WriteLine("読みがなは必須です。");
         }
 
-        // =============================================================================
-
-        // 重複チェック
-        // add/update の両方で行われるが、ロジックが微妙に異なるのでベタ書き。
-
-        var existingItems = await repository.GetAllAsync();
-        var duplicates = existingItems
-            .Where(e => string.Equals(e.Reading, newItem.Reading, StringComparison.OrdinalIgnoreCase))
-            .ToList();
-        if (duplicates.Any())
+        if (!await CheckForDuplicatesAsync(services, newItem.Reading))
         {
-            Console.WriteLine("同じ読みがなを持つ既存の項目が見つかりました。");
-            foreach (var dup in duplicates)
-            {
-                Console.WriteLine($"ID: {dup.Id} | 用語: {GetDisplayText(dup)} | ステータス: {dup.Status}");
-            }
-
-            var proceed = ReadString("続行しますか？ (y/n): ", "n");
-            if (!string.Equals(proceed, "y", StringComparison.OrdinalIgnoreCase))
-            {
-                Console.WriteLine("項目の追加をキャンセルしました。");
-                return;
-            }
+            Console.WriteLine("項目の追加をキャンセルしました。");
+            return;
         }
-
-        // =============================================================================
 
         newItem.Expression = ReadString("表記 (オプション): ");
         newItem.GeneralContext = ReadString("一般的なコンテキスト (オプション): ");
@@ -421,24 +432,76 @@ public class Program
         }
     }
 
-    private static async Task UpdateItemAsync(IServiceProvider services)
+    private static async Task<Entry?> SelectItemAsync(IServiceProvider services, string prompt)
     {
         var repository = services.GetRequiredService<IEntryRepository>();
 
+        var input = ReadString(prompt);
+        if (string.IsNullOrWhiteSpace(input))
+        {
+            Console.WriteLine("操作をキャンセルしました。");
+            return null;
+        }
+
+        if (Guid.TryParse(input, out var id))
+        {
+            var item = await repository.GetByIdAsync(id);
+            if (item == null)
+            {
+                Console.WriteLine($"ID '{id}' の項目が見つかりませんでした。");
+            }
+            return item;
+        }
+        else
+        {
+            var allItems = await repository.GetAllAsync();
+            var matchingItems = allItems
+                .Where(i => i.Reading.Equals(input.Trim(), StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+            if (matchingItems.Count == 0)
+            {
+                Console.WriteLine($"読みがな '{input}' に一致する項目が見つかりませんでした。");
+                return null;
+            }
+            else if (matchingItems.Count == 1)
+            {
+                return matchingItems[0];
+            }
+            else
+            {
+                Console.WriteLine($"読みがな '{input}' に一致する項目が複数見つかりました。");
+                for (int i = 0; i < matchingItems.Count; i++)
+                {
+                    Console.WriteLine($"{i + 1}. {GetDisplayText(matchingItems[i])} (ID: {matchingItems[i].Id})");
+                }
+                var choiceStr = ReadString("項目を選択してください: ");
+                if (int.TryParse(choiceStr, out var choiceInt) && choiceInt > 0 && choiceInt <= matchingItems.Count)
+                {
+                    return matchingItems[choiceInt - 1];
+                }
+                else
+                {
+                    Console.WriteLine("無効な選択です。操作をキャンセルしました。");
+                    return null;
+                }
+            }
+        }
+    }
+
+    private static async Task UpdateItemAsync(IServiceProvider services)
+    {
         Console.WriteLine();
         Console.WriteLine("=== 項目の表示・更新 ===");
 
-        var id = ReadGuid("表示・更新する項目のID: ");
-        if (id == null) return;
-
-        var item = await repository.GetByIdAsync(id.Value);
-        if (item == null)
+        var itemToUpdate = await SelectItemAsync(services, "表示・更新する項目のIDまたは読みがな: ");
+        if (itemToUpdate == null)
         {
-            Console.WriteLine("指定されたIDの項目が見つかりません。");
+            // null が返った理由は、SelectItemAsync により表示される。
             return;
         }
 
-        await UpdateItemCoreAsync(item, services, showAiMenu: true);
+        await UpdateItemCoreAsync(itemToUpdate, services, showAiMenu: true);
     }
 
     // FinalizeAllItemsAsync の実装のため、UpdateItemAsync のコア部分を切り出した。
@@ -463,33 +526,14 @@ public class Program
         if (string.IsNullOrWhiteSpace(newReading))
             newReading = item.Reading;
 
-        // =============================================================================
-
-        // 重複チェック
-        // add/update の両方で行われるが、ロジックが微妙に異なるのでベタ書き。
-
-        var existingItems = await repository.GetAllAsync();
-        var duplicates = existingItems
-            .Where(e => string.Equals(e.Reading, newReading, StringComparison.OrdinalIgnoreCase))
-            .Where(e => e.Id != item.Id) // 自分自身との一致ではない。
-            .ToList();
-        if (duplicates.Any())
+        if (newReading != originalReading)
         {
-            Console.WriteLine("同じ読みがなを持つ既存の項目が見つかりました。");
-            foreach (var dup in duplicates)
-            {
-                Console.WriteLine($"ID: {dup.Id} | 用語: {GetDisplayText(dup)} | ステータス: {dup.Status}");
-            }
-
-            var proceed = ReadString("続行しますか？ (y/n): ", "n");
-            if (!string.Equals(proceed, "y", StringComparison.OrdinalIgnoreCase))
+            if (!await CheckForDuplicatesAsync(services, newReading, item.Id))
             {
                 Console.WriteLine("項目の更新をキャンセルしました。");
                 return;
             }
         }
-
-        // =============================================================================
 
         var newExpression = ReadString($"表記 [{item.Expression ?? "なし"}]: ", item.Expression);
         var newGeneralContext = ReadString($"一般的なコンテキスト [{item.GeneralContext ?? "なし"}]: ", item.GeneralContext);
@@ -542,17 +586,14 @@ public class Program
         Console.WriteLine();
         Console.WriteLine("=== 項目の削除 ===");
 
-        var id = ReadGuid("削除する項目のID: ");
-        if (id == null) return;
-
-        var item = await repository.GetByIdAsync(id.Value);
-        if (item == null)
+        var itemToDelete = await SelectItemAsync(services, "削除する項目のIDまたは読みがな: ");
+        if (itemToDelete == null)
         {
-            Console.WriteLine($"ID '{id}' の項目が見つかりませんでした。");
+            // null が返った理由は、SelectItemAsync により表示される。
             return;
         }
 
-        Console.Write($"本当に '{GetDisplayText(item)}' を削除しますか？ (y/n): ");
+        Console.Write($"本当に '{GetDisplayText(itemToDelete)}' を削除しますか？ (y/n): ");
         var confirmation = Console.ReadLine();
 
         if (confirmation?.ToLower() == "y")
@@ -560,8 +601,8 @@ public class Program
             // データベースから削除する前に、関連ファイルをクリーンアップ。
             // DeleteAiContentAsync は特殊になっていて、メッセージを出力しないことも可能。
             // ここのように、もっと大きなまとまりが消されたなら、AI コンテンツが消されたと出力する必要はない。
-            await DeleteAiContentAsync(item, services, completionMessage: null);
-            await repository.DeleteAsync(id.Value);
+            await DeleteAiContentAsync(itemToDelete, services, completionMessage: null);
+            await repository.DeleteAsync(itemToDelete.Id);
             Console.WriteLine("項目が削除されました。");
         }
         else
