@@ -78,9 +78,9 @@ public class Program
 
         // バックアップディレクトリの処理（%TEMP%プレースホルダーの処理）
         var backupDirectory = kotobanSettings.BackupDirectory;
-        if (backupDirectory == "%TEMP%")
+        if (string.Equals(backupDirectory, "%TEMP%", StringComparison.OrdinalIgnoreCase))
         {
-            backupDirectory = Path.GetTempPath();
+            backupDirectory = Path.Combine(Path.GetTempPath(), "Kotoban", "Backups");
         }
         else if (!Path.IsPathFullyQualified(backupDirectory))
         {

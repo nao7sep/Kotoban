@@ -9,9 +9,9 @@ public enum JsonRepositoryBackupMode
     /// バックアップは作成されません。
     /// </summary>
     None,
-    
+
     /// <summary>
-    /// 保存する前に、システムの一時ディレクトリにデータファイルのコピーが作成されます。
+    /// 保存する前に、指定されたバックアップディレクトリにデータファイルのコピーが作成されます。
     /// </summary>
     CreateCopyInTemp
 }

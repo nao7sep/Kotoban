@@ -120,24 +120,21 @@ public class JsonEntryRepository : IEntryRepository
         var exceptions = new List<Exception>();
 
         // バックアップ
-        string? backupDir = null;
-        string? originalFileNameWithoutExtension = null;
         if (_backupMode == JsonRepositoryBackupMode.CreateCopyInTemp)
         {
             try
             {
                 if (File.Exists(_filePath))
                 {
-                    backupDir = Path.Combine(_backupDirectory, "Kotoban", "Backups");
-                    Directory.CreateDirectory(backupDir);
+                    Directory.CreateDirectory(_backupDirectory);
 
                     // 1秒に2回以上のバックアップが行われるケースを想定しにくいので、タイムスタンプの精度はこれで十分。
                     // 万が一にもそういうことがあったなら、差分がなく無意味なバックアップだろうし、上書き保存なのでたぶん落ちない。
                     var timestamp = DateTimeUtils.UtcNowTimestamp();
-                    originalFileNameWithoutExtension = Path.GetFileNameWithoutExtension(_filePath);
-                    // ディレクトリーパスに Backups と入れてあって、中身がそういうものなのが明らかなので、拡張子を .bak などにしない。
+                    var originalFileNameWithoutExtension = Path.GetFileNameWithoutExtension(_filePath);
+                    // バックアップディレクトリに保存するので、拡張子を .bak などにしない。
                     var backupFileName = $"{originalFileNameWithoutExtension}-{timestamp}.json";
-                    var backupPath = Path.Combine(backupDir, backupFileName);
+                    var backupPath = Path.Combine(_backupDirectory, backupFileName);
 
                     File.Copy(_filePath, backupPath, true);
                 }
@@ -163,13 +160,15 @@ public class JsonEntryRepository : IEntryRepository
         }
 
         // クリーンアップ
-        if (_backupMode == JsonRepositoryBackupMode.CreateCopyInTemp && backupDir != null && originalFileNameWithoutExtension != null)
+        if (_backupMode == JsonRepositoryBackupMode.CreateCopyInTemp)
         {
             try
             {
                 if (_maxBackupFiles > 0)
                 {
-                    var backupFiles = Directory.GetFiles(backupDir)
+                    Directory.CreateDirectory(_backupDirectory);
+                    var originalFileNameWithoutExtension = Path.GetFileNameWithoutExtension(_filePath);
+                    var backupFiles = Directory.GetFiles(_backupDirectory)
                         .Where(f => Path.GetFileName(f).StartsWith(originalFileNameWithoutExtension + "-") &&
                                     Path.GetExtension(f).Equals(".json", StringComparison.OrdinalIgnoreCase))
                         .ToArray();
