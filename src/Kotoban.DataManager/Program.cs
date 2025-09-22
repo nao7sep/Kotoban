@@ -276,6 +276,74 @@ public class Program
 
     private static async Task FinalizeAllItemsAsync(IServiceProvider services)
     {
+        var repository = services.GetRequiredService<IEntryRepository>();
+        var logger = services.GetRequiredService<ILogger<Program>>();
+
+        Console.WriteLine();
+        Console.WriteLine("=== 未承認項目の仕上げ ===");
+
+        var allItems = await repository.GetAllAsync();
+        var itemsToFinalize = allItems
+            .Where(i => i.Status != EntryStatus.Approved)
+            .OrderBy(i => i.CreatedAtUtc)
+            .ToList();
+
+        if (!itemsToFinalize.Any())
+        {
+            Console.WriteLine("すべての項目が承認済みです。");
+            return;
+        }
+
+        Console.WriteLine($"未承認の項目が{itemsToFinalize.Count}件見つかりました。");
+
+        var currentItemIndex = 0;
+        while (currentItemIndex < itemsToFinalize.Count)
+        {
+            // itemsToFinalize の項目をそのまま読むことも可能だが、レポジトリーパターンを尊重し、常に最新情報を取得する。
+            var currentItem = await repository.GetByIdAsync(itemsToFinalize[currentItemIndex].Id);
+            if (currentItem == null || currentItem.Status == EntryStatus.Approved)
+            {
+                currentItemIndex++;
+                continue;
+            }
+
+            Console.WriteLine();
+            PrintItemDetails(currentItem);
+
+            Console.WriteLine();
+            Console.WriteLine("=== 仕上げメニュー ===");
+            Console.WriteLine("1. 項目データを更新する");
+            Console.WriteLine("2. AIコンテンツを管理する");
+            Console.WriteLine("3. この項目をスキップして次へ");
+            Console.WriteLine("4. 仕上げプロセスを終了する");
+            var choice = ReadString("選択してください: ");
+
+            switch (choice)
+            {
+                case "1": // 項目データを更新する
+                    // いきなり「新しい値を～」より、空行に続けて、どのモードに入ったのか明示した方が分かりやすい。
+                    Console.WriteLine();
+                    Console.WriteLine("=== 項目の更新 ===");
+                    await UpdateItemCoreAsync(currentItem, services, showAiMenu: false);
+                    break;
+                case "2": // AIコンテンツを管理する
+                    await ShowAiContentMenuAsync(currentItem, services, printItemDetails: false);
+                    break;
+                case "3": // この項目をスキップして次へ
+                    Console.WriteLine("この項目をスキップします。");
+                    currentItemIndex++;
+                    break;
+                case "4": // 仕上げプロセスを終了する
+                    Console.WriteLine("仕上げプロセスを終了します。");
+                    return;
+                default:
+                    Console.WriteLine("無効な選択です。");
+                    break;
+            }
+        }
+
+        Console.WriteLine();
+        Console.WriteLine("すべての未承認項目の処理が完了しました。");
     }
 
     private static async Task ViewAllItemsAsync(IServiceProvider services)
@@ -342,6 +410,15 @@ public class Program
             return;
         }
 
+        await UpdateItemCoreAsync(item, services, showAiMenu: true);
+    }
+
+    // FinalizeAllItemsAsync の実装のため、UpdateItemAsync のコア部分を切り出した。
+    // それ以外に、このメソッドが存在するデザイン上の理由はない。
+    private static async Task UpdateItemCoreAsync(Entry item, IServiceProvider services, bool showAiMenu)
+    {
+        var repository = services.GetRequiredService<IEntryRepository>();
+
         var originalReading = item.Reading;
         var originalExpression = item.Expression;
         var originalGeneralContext = item.GeneralContext;
@@ -396,7 +473,10 @@ public class Program
             }
         }
 
-        await ShowAiContentMenuAsync(item, services);
+        if (showAiMenu)
+        {
+            await ShowAiContentMenuAsync(item, services);
+        }
     }
 
     private static async Task DeleteItemAsync(IServiceProvider services)
@@ -434,14 +514,17 @@ public class Program
         }
     }
 
-    private static async Task ShowAiContentMenuAsync(Entry item, IServiceProvider services)
+    private static async Task ShowAiContentMenuAsync(Entry item, IServiceProvider services, bool printItemDetails = true)
     {
         var logger = services.GetRequiredService<ILogger<Program>>();
 
-        // ループで毎回表示するとうるさいので、最初に一度だけ表示。
-        // 出力が「=== 項目の詳細 ===」から始まるので、直前に空行が必要。
-        Console.WriteLine();
-        PrintItemDetails(item);
+        if (printItemDetails)
+        {
+            // ループで毎回表示するとうるさいので、最初に一度だけ表示。
+            // 出力が「=== 項目の詳細 ===」から始まるので、直前に空行が必要。
+            Console.WriteLine();
+            PrintItemDetails(item);
+        }
 
         while (true)
         {
