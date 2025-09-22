@@ -307,14 +307,14 @@ public class Program
                 continue;
             }
 
-            Console.WriteLine();
+            // 仕上げ時には、たとえば更新後にもう一度読み返すなども有益なので、毎回表示。
             PrintItemDetails(currentItem);
 
             Console.WriteLine();
             Console.WriteLine("=== 仕上げメニュー ===");
             Console.WriteLine("1. 項目データを更新する");
             Console.WriteLine("2. AIコンテンツを管理する");
-            Console.WriteLine("3. この項目をスキップして次へ");
+            Console.WriteLine("3. 次の項目へ");
             Console.WriteLine("4. 仕上げプロセスを終了する");
             var choice = ReadString("選択してください: ");
 
@@ -329,8 +329,9 @@ public class Program
                 case "2": // AIコンテンツを管理する
                     await ShowAiContentMenuAsync(currentItem, services, printItemDetails: false);
                     break;
-                case "3": // この項目をスキップして次へ
-                    Console.WriteLine("この項目をスキップします。");
+                case "3": // 次の項目へ
+                    // 最終確認をしてから次へ進めるようにしておく。
+                    // それを確認しての移動なので、ここで追加の表示は不要。
                     currentItemIndex++;
                     break;
                 case "4": // 仕上げプロセスを終了する
@@ -521,8 +522,6 @@ public class Program
         if (printItemDetails)
         {
             // ループで毎回表示するとうるさいので、最初に一度だけ表示。
-            // 出力が「=== 項目の詳細 ===」から始まるので、直前に空行が必要。
-            Console.WriteLine();
             PrintItemDetails(item);
         }
 
