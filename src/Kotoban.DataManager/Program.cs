@@ -24,6 +24,8 @@ namespace Kotoban.DataManager;
 /// </summary>
 public class Program
 {
+    // 指定項目の AI コンテンツの状態に基づく動的メニューに使われる。
+    // これがないと、メニュー項目の文字列での switch になる。
     private enum AiContentAction
     {
         Generate,
@@ -130,7 +132,7 @@ public class Program
 
             var assembly = Assembly.GetExecutingAssembly();
             var assemblyTitle = assembly.GetCustomAttribute<AssemblyTitleAttribute>()?.Title;
-            if (string.IsNullOrEmpty(assemblyTitle))
+            if (string.IsNullOrWhiteSpace(assemblyTitle))
             {
                 throw new InvalidOperationException("Assembly title is not defined.");
             }
@@ -199,10 +201,11 @@ public class Program
             Console.WriteLine();
             Console.WriteLine("=== メインメニュー ===");
             Console.WriteLine("1. 項目を追加する");
-            Console.WriteLine("2. すべての項目を表示する");
-            Console.WriteLine("3. 項目を更新する");
-            Console.WriteLine("4. 項目を削除する");
-            Console.WriteLine("5. 終了する");
+            Console.WriteLine("2. データを仕上げる"); // AIコンテンツの生成と項目の承認を流れ作業で。
+            Console.WriteLine("3. 項目のリストを表示する");
+            Console.WriteLine("4. 項目を表示・更新する");
+            Console.WriteLine("5. 項目を削除する");
+            Console.WriteLine("6. 終了する");
             Console.Write("選択してください: ");
 
             var choice = Console.ReadLine();
@@ -215,15 +218,18 @@ public class Program
                         await AddItemAsync(scopedServices);
                         break;
                     case "2":
-                        await ViewAllItemsAsync(scopedServices);
+                        await FinalizeAllItemsAsync(scopedServices);
                         break;
                     case "3":
-                        await UpdateItemAsync(scopedServices);
+                        await ViewAllItemsAsync(scopedServices);
                         break;
                     case "4":
-                        await DeleteItemAsync(scopedServices);
+                        await UpdateItemAsync(scopedServices);
                         break;
                     case "5":
+                        await DeleteItemAsync(scopedServices);
+                        break;
+                    case "6":
                         return;
                     default:
                         Console.WriteLine("無効な選択です。もう一度お試しください。");
@@ -248,10 +254,10 @@ public class Program
 
         while (true)
         {
-            var reading = ReadString("読みがな: ", string.Empty);
+            var reading = ReadString("読みがな: ");
             if (!string.IsNullOrWhiteSpace(reading))
             {
-                newItem.Reading = reading;
+                newItem.Reading = reading.Trim();
                 break;
             }
             Console.WriteLine("読みがなは必須です。");
@@ -265,8 +271,11 @@ public class Program
 
         await repository.AddAsync(newItem);
         Console.WriteLine($"項目 '{GetDisplayText(newItem)}' が追加されました。ID: {newItem.Id}");
-
         await ShowAiContentMenuAsync(newItem, services);
+    }
+
+    private static async Task FinalizeAllItemsAsync(IServiceProvider services)
+    {
     }
 
     private static async Task ViewAllItemsAsync(IServiceProvider services)
@@ -280,25 +289,23 @@ public class Program
         Console.WriteLine($"2. AI生成待ち ({EntryStatus.PendingAiGeneration})");
         Console.WriteLine($"3. 承認待ち ({EntryStatus.PendingApproval})");
         Console.WriteLine($"4. 承認済み ({EntryStatus.Approved})");
-        Console.Write("選択してください [1]: ");
+        var choice = ReadString("選択してください [1]: ", "1");
 
-        var choice = ReadString(string.Empty, "1");
-        var allItems = await repository.GetAllAsync();
         IEnumerable<Entry> itemsToShow;
 
         switch (choice)
         {
             case "2":
-                itemsToShow = allItems.Where(i => i.Status == EntryStatus.PendingAiGeneration);
+                itemsToShow = await repository.GetAllAsync(EntryStatus.PendingAiGeneration);
                 break;
             case "3":
-                itemsToShow = allItems.Where(i => i.Status == EntryStatus.PendingApproval);
+                itemsToShow = await repository.GetAllAsync(EntryStatus.PendingApproval);
                 break;
             case "4":
-                itemsToShow = allItems.Where(i => i.Status == EntryStatus.Approved);
+                itemsToShow = await repository.GetAllAsync(EntryStatus.Approved);
                 break;
             default:
-                itemsToShow = allItems;
+                itemsToShow = await repository.GetAllAsync();
                 break;
         }
 
@@ -309,27 +316,12 @@ public class Program
             return;
         }
 
+        // 1行ずつの入力や出力のところでは空行は不要だが、リスト表示の直前にないと違和感がある。
+        Console.WriteLine();
+
         foreach (var item in entryList)
         {
             Console.WriteLine($"ID: {item.Id} | 用語: {GetDisplayText(item)} | ステータス: {item.Status}");
-        }
-
-        Console.WriteLine();
-        Console.Write("詳細を表示したい項目のIDを入力してください（スキップはEnter）: ");
-        var idInput = Console.ReadLine();
-
-        if (Guid.TryParse(idInput, out var id))
-        {
-            // フィルタリングされたリストではなく、リポジトリから直接IDで項目を取得する必要がある
-            var itemToShow = await repository.GetByIdAsync(id);
-            if (itemToShow != null)
-            {
-                PrintItemDetails(itemToShow);
-            }
-            else
-            {
-                Console.WriteLine("指定されたIDの項目が見つかりません。");
-            }
         }
     }
 
@@ -338,19 +330,17 @@ public class Program
         var repository = services.GetRequiredService<IEntryRepository>();
 
         Console.WriteLine();
-        Console.WriteLine("=== 項目の更新 ===");
+        Console.WriteLine("=== 項目の表示・更新 ===");
 
-        var id = ReadGuid("更新する項目のID: ");
-        if (id == Guid.Empty) return;
+        var id = ReadGuid("表示・更新する項目のID: ");
+        if (id == null) return;
 
-        var item = await repository.GetByIdAsync(id);
+        var item = await repository.GetByIdAsync(id.Value);
         if (item == null)
         {
             Console.WriteLine("指定されたIDの項目が見つかりません。");
             return;
         }
-
-        PrintItemDetails(item);
 
         var originalReading = item.Reading;
         var originalExpression = item.Expression;
@@ -359,21 +349,18 @@ public class Program
 
         Console.WriteLine("新しい値を入力してください（変更しない場合はEnter）:");
 
-        string newReading;
-        while (true)
-        {
-            var reading = ReadString($"読みがな [{item.Reading}]: ", item.Reading);
-            if (!string.IsNullOrWhiteSpace(reading))
-            {
-                newReading = reading;
-                break;
-            }
-            Console.WriteLine("読みがなは必須です。");
-        }
-
+        var newReading = ReadString($"読みがな [{item.Reading}]: ", item.Reading);
         var newExpression = ReadString($"表記 [{item.Expression ?? "なし"}]: ", item.Expression);
         var newGeneralContext = ReadString($"一般的なコンテキスト [{item.GeneralContext ?? "なし"}]: ", item.GeneralContext);
         var newUserNote = ReadString($"ユーザーメモ [{item.UserNote ?? "なし"}]: ", item.UserNote);
+
+        // 読みがなは並び替えに使われるものなので、add/update の両方でトリムされる。
+        // ほかは、前後に空白が入ろうと実害が軽微なので、トリム沼を回避しておく。
+        // 必須データなので、有効な文字列が得られなかったなら元の値にフォールバック。
+        // というのを、目立つようにあえてここで実装しておく。
+        newReading = newReading?.Trim();
+        if (string.IsNullOrWhiteSpace(newReading))
+            newReading = item.Reading;
 
         var dataHasChanged = newReading != originalReading ||
                              newExpression != originalExpression ||
@@ -392,26 +379,24 @@ public class Program
             // まずテキストの変更を保存。
             // DeleteAiContentAsync も保存を行うため、二度手間になっていると AI に怒られることがある。
             // これは仕様。
+            //
             // UpdateAsync は保存「のみ」を行うと確約されたものでなく、むしろ persistent storage を意識せず「項目の更新」を行うもの。
-            // 実装を追えば確かに瞬間的に二度の保存になって無駄だが、ロジックで考えるなら、保存の処理を伴うかどうか「分からない」UpdateAsync をここで呼ぶことは誤りでない。
-            // エントリーの更新という稀でない処理において微々たるコストが発生するが、論理的な正しさをここでは優先。
+            // 実装を追えば確かに瞬間的に二度の保存になって無駄だが、
+            // ロジックで考えるなら、保存の処理を伴うかどうか「分からない」UpdateAsync をここで呼ぶことは誤りでない。
+            //
+            // エントリーの更新という低頻度の処理において微々たるコストが発生するが、論理的な正しさをここでは優先。
             // DeleteAiContentAsync を「削除」と「保存」に分ける選択肢もあるが、そこまでつくり込むこともないのでこのへんで。
+
             await repository.UpdateAsync(item);
-            Console.WriteLine("テキスト項目を更新しました。");
+            Console.WriteLine("項目を更新しました。");
 
             if (hadAiContent)
             {
                 await DeleteAiContentAsync(item, services, "項目データが変更されたため、既存のAIコンテンツはクリアされました。");
             }
         }
-        else
-        {
-            Console.WriteLine();
-            Console.WriteLine("項目データに変更はありませんでした。");
-        }
 
         await ShowAiContentMenuAsync(item, services);
-        Console.WriteLine("項目の更新が完了しました。");
     }
 
     private static async Task DeleteItemAsync(IServiceProvider services)
@@ -422,9 +407,9 @@ public class Program
         Console.WriteLine("=== 項目の削除 ===");
 
         var id = ReadGuid("削除する項目のID: ");
-        if (id == Guid.Empty) return;
+        if (id == null) return;
 
-        var item = await repository.GetByIdAsync(id);
+        var item = await repository.GetByIdAsync(id.Value);
         if (item == null)
         {
             Console.WriteLine($"ID '{id}' の項目が見つかりませんでした。");
@@ -440,7 +425,7 @@ public class Program
             // DeleteAiContentAsync は特殊になっていて、メッセージを出力しないことも可能。
             // ここのように、もっと大きなまとまりが消されたなら、AI コンテンツが消されたと出力する必要はない。
             await DeleteAiContentAsync(item, services, completionMessage: null);
-            await repository.DeleteAsync(id);
+            await repository.DeleteAsync(id.Value);
             Console.WriteLine("項目が削除されました。");
         }
         else
@@ -453,11 +438,15 @@ public class Program
     {
         var logger = services.GetRequiredService<ILogger<Program>>();
 
+        // ループで毎回表示するとうるさいので、最初に一度だけ表示。
+        // 出力が「=== 項目の詳細 ===」から始まるので、直前に空行が必要。
+        Console.WriteLine();
+        PrintItemDetails(item);
+
         while (true)
         {
             Console.WriteLine();
             Console.WriteLine("=== AIコンテンツ管理メニュー ===");
-            PrintItemDetails(item);
 
             var options = new Dictionary<string, (AiContentAction Action, string DisplayText)>();
             var optionIndex = 1;
@@ -481,8 +470,7 @@ public class Program
             {
                 Console.WriteLine($"{opt.Key}. {opt.Value.DisplayText}");
             }
-            Console.Write("選択してください: ");
-            var choice = Console.ReadLine();
+            var choice = ReadString("選択してください: ");
 
             if (choice == null || !options.TryGetValue(choice, out var selectedOption))
             {
@@ -499,15 +487,12 @@ public class Program
                     case AiContentAction.Regenerate:
                         await GenerateOrUpdateAiContentAsync(item, services, selectedAction);
                         break;
-
                     case AiContentAction.Approve:
                         await ApproveAiContentAsync(item, services);
                         return; // 承認後はメニューを抜ける
-
                     case AiContentAction.Delete:
                         await DeleteAiContentAsync(item, services, "AIコンテンツが削除されました。");
                         break;
-
                     case AiContentAction.Exit:
                         return;
                 }
@@ -515,8 +500,6 @@ public class Program
             catch (Exception ex)
             {
                 logger.LogError(ex, "An error occurred in the AI Content Menu.");
-                // ちょくちょくありそうなので日本語でも出力することを考えたが、うるささが勝るのでやめておく。
-                // Console.WriteLine("エラーが発生しました。もう一度お試しください。");
             }
         }
     }
@@ -546,21 +529,21 @@ public class Program
         var logger = services.GetRequiredService<ILogger<Program>>();
 
         // 画像ファイルの物理削除
-        if (!string.IsNullOrEmpty(item.RelativeImagePath))
+        if (!string.IsNullOrWhiteSpace(item.RelativeImagePath))
         {
-            try
+            var imagePath = AppPath.GetAbsolutePath(item.RelativeImagePath);
+            if (File.Exists(imagePath))
             {
-                var imagePath = AppPath.GetAbsolutePath(item.RelativeImagePath);
-                if (File.Exists(imagePath))
-                {
-                    File.Delete(imagePath);
-                }
-            }
-            catch (Exception ex)
-            {
-                // ロギングするが、処理は続行。
-                // コンソールにも出力される。
-                logger.LogError(ex, $"Failed to delete image file: {item.RelativeImagePath}");
+                // 迷ったが、例外をキャッチせず、ログへの書き込みも行わず、
+                // ここで問題があればエントリーの削除が行われないように変更した。
+                //
+                // 基本的な構造として、このアプリでは、メインメニューと AI メニューの二つが try/catch で何でもキャッチする。
+                // そのため、それぞれのコマンドのコードはシンプルになっていて、何かあれば、すぐそこで処理が止まる。
+                //
+                // このメソッドも、ファイルを消せなければ項目も消さない方が、パソコンの再起動だけで問題を解決できるだろう。
+                // 逆に、ファイルが残ったのに項目を消しては、そのままユーザーが忘れることで、いわゆる orphan file が残る。
+
+                File.Delete(imagePath);
             }
         }
 
@@ -569,7 +552,7 @@ public class Program
 
         await repository.UpdateAsync(item);
 
-        if (!string.IsNullOrEmpty(completionMessage))
+        if (!string.IsNullOrWhiteSpace(completionMessage))
         {
             Console.WriteLine(completionMessage);
         }
@@ -586,6 +569,10 @@ public class Program
         return entry.Reading;
     }
 
+    /// <summary>
+    /// トリミングなしで返すので、読み取り側で適宜。
+    /// 読み取るメソッドがトリミングも行うと呼び出し側の選択肢が減る。
+    /// </summary>
     private static string? ReadString(string prompt, string? defaultValue = null)
     {
         Console.Write(prompt);
@@ -593,12 +580,12 @@ public class Program
         return string.IsNullOrWhiteSpace(input) ? defaultValue : input;
     }
 
-    private static Guid ReadGuid(string prompt)
+    private static Guid? ReadGuid(string prompt)
     {
         while (true)
         {
             var input = ReadString(prompt);
-            if (string.IsNullOrWhiteSpace(input)) return Guid.Empty;
+            if (string.IsNullOrWhiteSpace(input)) return null;
             if (Guid.TryParse(input, out var result))
             {
                 return result;

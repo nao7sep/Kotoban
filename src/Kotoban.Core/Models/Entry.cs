@@ -96,7 +96,10 @@ public class Entry
     {
         Explanations = newExplanations;
         ExplanationGeneratedAtUtc = DateTime.UtcNow;
-        UpdateStatusAfterGeneration();
+        // 今のところ必須なのは説明だけ。
+        // なかった説明が存在するようになったのでも、あった説明が更新されたのでも、（再）承認は必要。
+        Status = EntryStatus.PendingApproval;
+        ApprovedAtUtc = null;
     }
 
     /// <summary>
@@ -104,21 +107,24 @@ public class Entry
     /// </summary>
     /// <param name="imagePath">画像の相対パス</param>
     /// <param name="imagePrompt">画像の生成に使用されたプロンプト</param>
-    public void RegisterGeneratedImage(string imagePath, string imagePrompt)
+    public void RegisterGeneratedImage(string imagePath, string? imagePrompt)
     {
         RelativeImagePath = imagePath;
         ImagePrompt = imagePrompt;
         ImageGeneratedAtUtc = DateTime.UtcNow;
-        UpdateStatusAfterGeneration();
-    }
-
-    /// <summary>
-    /// コンテンツが生成または再生成された後にステータスを更新します。
-    /// </summary>
-    private void UpdateStatusAfterGeneration()
-    {
-        Status = EntryStatus.PendingApproval;
-        ApprovedAtUtc = null;
+        if (Explanations.Count == 0)
+        {
+            // 画像はオプション。
+            // 画像だけが生成または更新されたなら、まだ承認できない。
+            Status = EntryStatus.PendingAiGeneration;
+            ApprovedAtUtc = null; // 一応。
+        }
+        else
+        {
+            // 説明があれば、画像の生成または更新により（再）承認が必要に。
+            Status = EntryStatus.PendingApproval;
+            ApprovedAtUtc = null;
+        }
     }
 
     /// <summary>
@@ -129,10 +135,10 @@ public class Entry
         Explanations.Clear();
         RelativeImagePath = null;
         ImagePrompt = null;
+        Status = EntryStatus.PendingAiGeneration;
         ExplanationGeneratedAtUtc = null;
         ImageGeneratedAtUtc = null;
         ApprovedAtUtc = null;
-        Status = EntryStatus.PendingAiGeneration;
     }
 
     /// <summary>
@@ -140,11 +146,13 @@ public class Entry
     /// </summary>
     public void Approve()
     {
-        if (Status == EntryStatus.PendingApproval)
+        if (Status != EntryStatus.PendingApproval)
         {
-            Status = EntryStatus.Approved;
-            ApprovedAtUtc = DateTime.UtcNow;
+            // 単純な実装ミスの可能性が高いので、投げておく。
+            throw new InvalidOperationException("Only entries pending approval can be approved.");
         }
+        Status = EntryStatus.Approved;
+        ApprovedAtUtc = DateTime.UtcNow;
     }
 
     #endregion

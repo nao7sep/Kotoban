@@ -201,9 +201,12 @@ public class JsonEntryRepository : IEntryRepository
     }
 
     /// <inheritdoc />
-    public Task<IEnumerable<Entry>> GetAllAsync()
+    public Task<IEnumerable<Entry>> GetAllAsync(EntryStatus? status = null)
     {
-        return Task.FromResult<IEnumerable<Entry>>(_items);
+        // JSON では _items に全データが入っているので Get* で絞り込んでも意味がない。
+        // ワークフローを考え、また、SQL もゆるく想定するなら、状態による絞り込みは、少なくとも SQL では効果的。
+        var items = status.HasValue ? _items.Where(i => i.Status == status.Value) : _items;
+        return Task.FromResult(items);
     }
 
     /// <inheritdoc />
@@ -221,7 +224,7 @@ public class JsonEntryRepository : IEntryRepository
         if (item.Id != Guid.Empty)
         {
             // SQL 系のデータベースで auto-incremented な ID のところに INSERT コマンドで値を指定するとエラーになりうることを参考に。
-            // 呼び出し側が GUID を指定するのは、初回テスト時に2秒で直せる実装ミスなので、厳しめに対応。
+            // 指定の必要のない GUID を指定するのは、判明すれば2秒で直せる実装ミスなので、厳しめに対応。
             throw new InvalidOperationException("Cannot add an entry that already has an ID.");
         }
 

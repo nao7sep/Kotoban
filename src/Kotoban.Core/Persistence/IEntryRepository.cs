@@ -13,8 +13,9 @@ public interface IEntryRepository
     /// <summary>
     /// すべての項目を非同期で取得します。
     /// </summary>
+    /// <param name="status">取得する項目のステータスをフィルタリングするためのオプションのパラメーター。</param>
     /// <returns>項目のコレクション。</returns>
-    Task<IEnumerable<Entry>> GetAllAsync();
+    Task<IEnumerable<Entry>> GetAllAsync(EntryStatus? status = null);
 
     /// <summary>
     /// IDによって特定の項目を非同期で取得します。

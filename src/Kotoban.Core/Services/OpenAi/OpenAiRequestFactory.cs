@@ -10,16 +10,6 @@ namespace Kotoban.Core.Services.OpenAi;
 public class OpenAiRequestFactory
 {
     /// <summary>
-    /// OpenAI API キー。
-    /// </summary>
-    public string ApiKey { get; }
-
-    /// <summary>
-    /// OpenAI API ベース URL。
-    /// </summary>
-    public string ApiBase { get; }
-
-    /// <summary>
     /// チャットモデル名。
     /// </summary>
     public string ChatModel { get; }
@@ -36,25 +26,15 @@ public class OpenAiRequestFactory
     /// <exception cref="InvalidOperationException">必須設定が不足している場合</exception>
     public OpenAiRequestFactory(OpenAiSettings settings)
     {
-        if (string.IsNullOrEmpty(settings.ApiKey))
-        {
-            throw new InvalidOperationException("ApiKey is required.");
-        }
-        if (string.IsNullOrEmpty(settings.ApiBase))
-        {
-            throw new InvalidOperationException("ApiBase is required.");
-        }
-        if (string.IsNullOrEmpty(settings.ChatModel))
+        if (string.IsNullOrWhiteSpace(settings.ChatModel))
         {
             throw new InvalidOperationException("ChatModel is required.");
         }
-        if (string.IsNullOrEmpty(settings.ImageModel))
+        if (string.IsNullOrWhiteSpace(settings.ImageModel))
         {
             throw new InvalidOperationException("ImageModel is required.");
         }
 
-        ApiKey = settings.ApiKey;
-        ApiBase = settings.ApiBase;
         ChatModel = settings.ChatModel;
         ImageModel = settings.ImageModel;
     }
@@ -91,7 +71,7 @@ public class OpenAiRequestFactory
     {
         var messages = new List<OpenAiChatMessage>();
 
-        if (!string.IsNullOrEmpty(systemMessage))
+        if (!string.IsNullOrWhiteSpace(systemMessage))
         {
             messages.Add(new OpenAiChatMessage
             {

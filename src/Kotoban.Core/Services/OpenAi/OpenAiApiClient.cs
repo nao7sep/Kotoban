@@ -57,7 +57,7 @@ public class OpenAiApiClient
         message.Content = new StringContent(json, Encoding.UTF8, "application/json");
 
         // ApiKey が利用可能な場合のみ Authorization ヘッダーを追加
-        if (!string.IsNullOrEmpty(transport?.ApiKey))
+        if (!string.IsNullOrWhiteSpace(transport?.ApiKey))
         {
             message.Headers.Add("Authorization", $"Bearer {transport.ApiKey}");
         }
@@ -114,7 +114,7 @@ public class OpenAiApiClient
         message.Content = new StringContent(json, Encoding.UTF8, "application/json");
 
         // ApiKey が利用可能な場合のみ Authorization ヘッダーを追加
-        if (!string.IsNullOrEmpty(transport?.ApiKey))
+        if (!string.IsNullOrWhiteSpace(transport?.ApiKey))
         {
             message.Headers.Add("Authorization", $"Bearer {transport.ApiKey}");
         }
