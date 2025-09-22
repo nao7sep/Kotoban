@@ -263,6 +263,33 @@ public class Program
             Console.WriteLine("読みがなは必須です。");
         }
 
+        // =============================================================================
+
+        // 重複チェック
+        // add/update の両方で行われるが、ロジックが微妙に異なるのでベタ書き。
+
+        var existingItems = await repository.GetAllAsync();
+        var duplicates = existingItems
+            .Where(e => string.Equals(e.Reading, newItem.Reading, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        if (duplicates.Any())
+        {
+            Console.WriteLine("同じ読みがなを持つ既存の項目が見つかりました。");
+            foreach (var dup in duplicates)
+            {
+                Console.WriteLine($"ID: {dup.Id} | 用語: {GetDisplayText(dup)} | ステータス: {dup.Status}");
+            }
+
+            var proceed = ReadString("続行しますか？ (y/n): ", "n");
+            if (!string.Equals(proceed, "y", StringComparison.OrdinalIgnoreCase))
+            {
+                Console.WriteLine("項目の追加をキャンセルしました。");
+                return;
+            }
+        }
+
+        // =============================================================================
+
         newItem.Expression = ReadString("表記 (オプション): ");
         newItem.GeneralContext = ReadString("一般的なコンテキスト (オプション): ");
         newItem.UserNote = ReadString("ユーザーメモ (オプション): ");
@@ -428,17 +455,45 @@ public class Program
         Console.WriteLine("新しい値を入力してください（変更しない場合はEnter）:");
 
         var newReading = ReadString($"読みがな [{item.Reading}]: ", item.Reading);
-        var newExpression = ReadString($"表記 [{item.Expression ?? "なし"}]: ", item.Expression);
-        var newGeneralContext = ReadString($"一般的なコンテキスト [{item.GeneralContext ?? "なし"}]: ", item.GeneralContext);
-        var newUserNote = ReadString($"ユーザーメモ [{item.UserNote ?? "なし"}]: ", item.UserNote);
 
         // 読みがなは並び替えに使われるものなので、add/update の両方でトリムされる。
         // ほかは、前後に空白が入ろうと実害が軽微なので、トリム沼を回避しておく。
         // 必須データなので、有効な文字列が得られなかったなら元の値にフォールバック。
-        // というのを、目立つようにあえてここで実装しておく。
         newReading = newReading?.Trim();
         if (string.IsNullOrWhiteSpace(newReading))
             newReading = item.Reading;
+
+        // =============================================================================
+
+        // 重複チェック
+        // add/update の両方で行われるが、ロジックが微妙に異なるのでベタ書き。
+
+        var existingItems = await repository.GetAllAsync();
+        var duplicates = existingItems
+            .Where(e => string.Equals(e.Reading, newReading, StringComparison.OrdinalIgnoreCase))
+            .Where(e => e.Id != item.Id) // 自分自身との一致ではない。
+            .ToList();
+        if (duplicates.Any())
+        {
+            Console.WriteLine("同じ読みがなを持つ既存の項目が見つかりました。");
+            foreach (var dup in duplicates)
+            {
+                Console.WriteLine($"ID: {dup.Id} | 用語: {GetDisplayText(dup)} | ステータス: {dup.Status}");
+            }
+
+            var proceed = ReadString("続行しますか？ (y/n): ", "n");
+            if (!string.Equals(proceed, "y", StringComparison.OrdinalIgnoreCase))
+            {
+                Console.WriteLine("項目の更新をキャンセルしました。");
+                return;
+            }
+        }
+
+        // =============================================================================
+
+        var newExpression = ReadString($"表記 [{item.Expression ?? "なし"}]: ", item.Expression);
+        var newGeneralContext = ReadString($"一般的なコンテキスト [{item.GeneralContext ?? "なし"}]: ", item.GeneralContext);
+        var newUserNote = ReadString($"ユーザーメモ [{item.UserNote ?? "なし"}]: ", item.UserNote);
 
         var dataHasChanged = newReading != originalReading ||
                              newExpression != originalExpression ||
@@ -701,12 +756,12 @@ public class Program
         {
             foreach (var (level, text) in item.Explanations)
             {
-                Console.WriteLine($"  - {level}: {text}");
+                Console.WriteLine($"{level}: {text}");
             }
         }
         else
         {
-            Console.WriteLine("  (なし)");
+            Console.WriteLine("なし");
         }
 
         Console.WriteLine();
