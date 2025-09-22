@@ -64,19 +64,36 @@ public class Program
         // AI がやりだしたときには、「Program.メンバー」または「ほかのクラス.静的メンバー」でよいのではと思った。
         // しかし、Scoped, Singleton, Transient の違いを学び、サービス登録による拡張性を理解した。
 
-        var dataFilePath = builder.Configuration["DataFilePath"] ?? "Kotoban-Data.json";
+        var kotobanSettings = new KotobanSettings();
+        // このBindは、"Kotoban"セクションが存在しない場合や値がマッピングできない場合でも例外を投げず、kotobanSettingsのプロパティはデフォルト値のままになります。
+        builder.Configuration.GetSection("Kotoban").Bind(kotobanSettings);
+        builder.Services.AddSingleton(kotobanSettings);
+
+        // データファイルパスの処理
+        var dataFilePath = kotobanSettings.DataFilePath;
         if (!Path.IsPathFullyQualified(dataFilePath))
         {
             dataFilePath = AppPath.GetAbsolutePath(dataFilePath);
         }
-        var maxBackupFiles = builder.Configuration.GetValue("MaxBackupFiles", 100);
+
+        // バックアップディレクトリの処理（%TEMP%プレースホルダーの処理）
+        var backupDirectory = kotobanSettings.BackupDirectory;
+        if (backupDirectory == "%TEMP%")
+        {
+            backupDirectory = Path.GetTempPath();
+        }
+        else if (!Path.IsPathFullyQualified(backupDirectory))
+        {
+            backupDirectory = AppPath.GetAbsolutePath(backupDirectory);
+        }
 
         builder.Services.AddSingleton<IEntryRepository>(provider =>
         {
             return new JsonEntryRepository(
                 dataFilePath,
                 JsonRepositoryBackupMode.CreateCopyInTemp,
-                maxBackupFiles
+                backupDirectory,
+                kotobanSettings.MaxBackupFiles
             );
         });
 

@@ -20,6 +20,7 @@ public class JsonEntryRepository : IEntryRepository
 {
     private readonly string _filePath;
     private readonly JsonRepositoryBackupMode _backupMode;
+    private readonly string _backupDirectory;
     private List<Entry> _items = new();
     private readonly JsonSerializerOptions _jsonOptions;
     private readonly int _maxBackupFiles;
@@ -54,11 +55,13 @@ public class JsonEntryRepository : IEntryRepository
     /// </summary>
     /// <param name="filePath">データが格納されているJSONファイルのパス。</param>
     /// <param name="backupMode">このリポジトリが使用するバックアップ戦略。</param>
+    /// <param name="backupDirectory">バックアップファイルを保存するディレクトリのパス。</param>
     /// <param name="maxBackupFiles">保持するバックアップファイルの最大数。</param>
-    public JsonEntryRepository(string filePath, JsonRepositoryBackupMode backupMode, int maxBackupFiles)
+    public JsonEntryRepository(string filePath, JsonRepositoryBackupMode backupMode, string backupDirectory, int maxBackupFiles)
     {
         _filePath = filePath;
         _backupMode = backupMode;
+        _backupDirectory = backupDirectory;
         _maxBackupFiles = maxBackupFiles;
 
         _jsonOptions = new JsonSerializerOptions
@@ -125,7 +128,7 @@ public class JsonEntryRepository : IEntryRepository
             {
                 if (File.Exists(_filePath))
                 {
-                    backupDir = Path.Combine(Path.GetTempPath(), "Kotoban", "Backups");
+                    backupDir = Path.Combine(_backupDirectory, "Kotoban", "Backups");
                     Directory.CreateDirectory(backupDir);
 
                     // 1秒に2回以上のバックアップが行われるケースを想定しにくいので、タイムスタンプの精度はこれで十分。
