@@ -69,30 +69,30 @@ public class Program
         builder.Configuration.GetSection("Kotoban").Bind(kotobanSettings);
         builder.Services.AddSingleton(kotobanSettings);
 
-        // データファイルパスの処理
-        var dataFilePath = kotobanSettings.DataFilePath;
-        if (!Path.IsPathFullyQualified(dataFilePath))
+        // JSONデータファイルパスの処理
+        var jsonDataFilePath = kotobanSettings.JsonDataFilePath;
+        if (!Path.IsPathFullyQualified(jsonDataFilePath))
         {
-            dataFilePath = AppPath.GetAbsolutePath(dataFilePath);
+            jsonDataFilePath = AppPath.GetAbsolutePath(jsonDataFilePath);
         }
 
-        // バックアップディレクトリの処理（%TEMP%プレースホルダーの処理）
-        var backupDirectory = kotobanSettings.BackupDirectory;
-        if (string.Equals(backupDirectory, "%TEMP%", StringComparison.OrdinalIgnoreCase))
+        // JSONバックアップディレクトリの処理（%TEMP%プレースホルダーの処理）
+        var jsonBackupDirectory = kotobanSettings.JsonBackupDirectory;
+        if (string.Equals(jsonBackupDirectory, "%TEMP%", StringComparison.OrdinalIgnoreCase))
         {
-            backupDirectory = Path.Combine(Path.GetTempPath(), "Kotoban", "Backups");
+            jsonBackupDirectory = Path.Combine(Path.GetTempPath(), "Kotoban", "Backups");
         }
-        else if (!Path.IsPathFullyQualified(backupDirectory))
+        else if (!Path.IsPathFullyQualified(jsonBackupDirectory))
         {
-            backupDirectory = AppPath.GetAbsolutePath(backupDirectory);
+            jsonBackupDirectory = AppPath.GetAbsolutePath(jsonBackupDirectory);
         }
 
         builder.Services.AddSingleton<IEntryRepository>(provider =>
         {
             return new JsonEntryRepository(
-                dataFilePath,
+                jsonDataFilePath,
                 JsonRepositoryBackupMode.CreateCopyInTemp,
-                backupDirectory,
+                jsonBackupDirectory,
                 kotobanSettings.MaxBackupFiles
             );
         });
@@ -162,7 +162,7 @@ public class Program
             var versionString = version.Build == 0 ? $"{version.Major}.{version.Minor}" : version.ToString(3);
 
             Console.WriteLine($"{assemblyTitle} v{versionString}");
-            Console.WriteLine($"Data file: {dataFilePath}");
+            Console.WriteLine($"Data file: {jsonDataFilePath}");
             logger.LogInformation("Application starting.");
 
             // ここで host を丸ごと渡すのはベストプラクティスでないと。

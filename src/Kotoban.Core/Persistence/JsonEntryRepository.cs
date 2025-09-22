@@ -26,7 +26,7 @@ public class JsonEntryRepository : IEntryRepository
     private readonly int _maxBackupFiles;
 
     /// <summary>
-    /// データストアのファイルパスを取得します。
+    /// JSONデータストアのファイルパスを取得します。
     /// </summary>
     public string DataFilePath => _filePath;
 

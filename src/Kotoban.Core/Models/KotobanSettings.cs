@@ -8,14 +8,14 @@ namespace Kotoban.Core.Models
     public class KotobanSettings
     {
         /// <summary>
-        /// データファイルのパス。相対パスまたは絶対パスを指定可能。
+        /// JSONデータファイルのパス。相対パスまたは絶対パスを指定可能。
         /// </summary>
-        public string DataFilePath { get; set; } = "Kotoban-Data.json";
+        public string JsonDataFilePath { get; set; } = "Kotoban-Data.json";
 
         /// <summary>
-        /// バックアップファイル用のディレクトリパス。"%TEMP%"を指定するとユーザーのテンポラリフォルダを指す。
+        /// JSONファイルのバックアップ用ディレクトリパス。"%TEMP%"を指定するとユーザーのテンポラリフォルダを指す。
         /// </summary>
-        public string BackupDirectory { get; set; } = "%TEMP%";
+        public string JsonBackupDirectory { get; set; } = "%TEMP%";
 
         /// <summary>
         /// 保持するバックアップファイルの最大数。
