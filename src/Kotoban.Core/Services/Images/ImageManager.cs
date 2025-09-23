@@ -13,20 +13,74 @@ namespace Kotoban.Core.Services.Images;
 public class ImageManager : IImageManager
 {
     private readonly KotobanSettings _settings;
-    private readonly string _finalImageDirectory;
-    private readonly string _tempImageDirectory;
+
+    /// <summary>
+    /// 最終的な画像ファイルを保存するディレクトリの絶対パス。
+    /// </summary>
+    public string FinalImageDirectory { get; }
+
+    /// <summary>
+    /// 画像生成用の一時ファイルを保存するディレクトリの絶対パス。
+    /// </summary>
+    public string TempImageDirectory { get; }
+
+    /// <summary>
+    /// 最終的な画像ファイルの命名パターン。
+    /// </summary>
+    public string FinalImageFileNamePattern { get; }
+
+    /// <summary>
+    /// 一時画像ファイルの命名パターン。
+    /// </summary>
+    public string TempImageFileNamePattern { get; }
 
     /// <summary>
     /// ImageManagerの新しいインスタンスを初期化します。
     /// </summary>
     /// <param name="settings">Kotobanの設定</param>
-    /// <param name="finalImageDirectory">最終画像ディレクトリの絶対パス</param>
-    /// <param name="tempImageDirectory">一時画像ディレクトリの絶対パス</param>
-    public ImageManager(KotobanSettings settings, string finalImageDirectory, string tempImageDirectory)
+    public ImageManager(KotobanSettings settings)
     {
+        if (string.IsNullOrWhiteSpace(settings.RelativeImageDirectory))
+        {
+            throw new InvalidOperationException("RelativeImageDirectory is required.");
+        }
+        if (string.IsNullOrWhiteSpace(settings.TempImageDirectory))
+        {
+            throw new InvalidOperationException("TempImageDirectory is required.");
+        }
+        if (string.IsNullOrWhiteSpace(settings.FinalImageFileNamePattern))
+        {
+            throw new InvalidOperationException("FinalImageFileNamePattern is required.");
+        }
+        if (string.IsNullOrWhiteSpace(settings.TempImageFileNamePattern))
+        {
+            throw new InvalidOperationException("TempImageFileNamePattern is required.");
+        }
+
         _settings = settings;
-        _finalImageDirectory = finalImageDirectory;
-        _tempImageDirectory = tempImageDirectory;
+
+        FinalImageDirectory = _settings.RelativeImageDirectory;
+        if (!Path.IsPathFullyQualified(FinalImageDirectory))
+        {
+            FinalImageDirectory = AppPath.GetAbsolutePath(FinalImageDirectory);
+        }
+        else
+        {
+            throw new InvalidOperationException("RelativeImageDirectory must be a relative path.");
+        }
+
+        TempImageDirectory = _settings.TempImageDirectory;
+        if (TempImageDirectory.Equals("%TEMP%", StringComparison.OrdinalIgnoreCase))
+        {
+            TempImageDirectory = Path.Combine(Path.GetTempPath(), "Kotoban", "Temp", "Images");
+        }
+        else if (!Path.IsPathFullyQualified(TempImageDirectory))
+        {
+            TempImageDirectory = AppPath.GetAbsolutePath(TempImageDirectory);
+        }
+
+        FinalImageFileNamePattern = _settings.FinalImageFileNamePattern;
+        TempImageFileNamePattern = _settings.TempImageFileNamePattern;
     }
 
     /// <inheritdoc />
@@ -37,7 +91,7 @@ public class ImageManager : IImageManager
             return Task.FromResult<SavedImage?>(null);
         }
 
-        var currentImagePath = Path.Combine(_finalImageDirectory, entry.RelativeImagePath);
+        var currentImagePath = AppPath.GetAbsolutePath(entry.RelativeImagePath);
         if (!File.Exists(currentImagePath))
         {
             // その後すぐ画像をつくることが多いのでなんとかなりそうだし、
@@ -49,17 +103,17 @@ public class ImageManager : IImageManager
 
         // 一時ディレクトリに既存画像をコピー
 
-        Directory.CreateDirectory(_tempImageDirectory);
+        Directory.CreateDirectory(TempImageDirectory);
 
         var extension = Path.GetExtension(entry.RelativeImagePath);
         var tempFileName = string.Format(_settings.TempImageFileNamePattern, entry.Id, "0", extension);
-        var tempImagePath = Path.Combine(_tempImageDirectory, tempFileName);
+        var tempImagePath = Path.Combine(TempImageDirectory, tempFileName);
 
         File.Copy(currentImagePath, tempImagePath, overwrite: true);
 
         var result = new SavedImage
         {
-            RelativeImagePath = Path.GetRelativePath(_tempImageDirectory, tempImagePath),
+            RelativeImagePath = Path.GetRelativePath(TempImageDirectory, tempImagePath),
             ImageContext = entry.ImageContext,
             // これも落とすほどでないが、null だと何かがおかしいのは間違いないので。
             GeneratedAtUtc = entry.ImageGeneratedAtUtc ?? throw new InvalidOperationException("ImageGeneratedAtUtc is null"),
@@ -79,16 +133,16 @@ public class ImageManager : IImageManager
         DateTime generatedAtUtc,
         string? imagePrompt)
     {
-        Directory.CreateDirectory(_tempImageDirectory);
+        Directory.CreateDirectory(TempImageDirectory);
 
         var tempFileName = string.Format(_settings.TempImageFileNamePattern, entry.Id, attemptNumber, extension);
-        var tempImagePath = Path.Combine(_tempImageDirectory, tempFileName);
+        var tempImagePath = Path.Combine(TempImageDirectory, tempFileName);
 
         await File.WriteAllBytesAsync(tempImagePath, imageBytes);
 
         return new SavedImage
         {
-            RelativeImagePath = Path.GetRelativePath(_tempImageDirectory, tempImagePath),
+            RelativeImagePath = Path.GetRelativePath(TempImageDirectory, tempImagePath),
             ImageContext = imageContext,
             GeneratedAtUtc = generatedAtUtc,
             ImagePrompt = imagePrompt
@@ -98,33 +152,33 @@ public class ImageManager : IImageManager
     /// <inheritdoc />
     public Task<string> FinalizeImageAsync(Entry entry, SavedImage selectedImage)
     {
-        var tempImagePath = Path.Combine(_tempImageDirectory, selectedImage.RelativeImagePath);
+        var tempImagePath = Path.Combine(TempImageDirectory, selectedImage.RelativeImagePath);
         if (!File.Exists(tempImagePath))
         {
             throw new FileNotFoundException($"Temporary image file not found: {tempImagePath}");
         }
 
-        Directory.CreateDirectory(_finalImageDirectory);
+        Directory.CreateDirectory(FinalImageDirectory);
 
         var extension = Path.GetExtension(tempImagePath);
         var finalFileName = string.Format(_settings.FinalImageFileNamePattern, entry.Id, extension);
-        var finalImagePath = Path.Combine(_finalImageDirectory, finalFileName);
+        var finalImagePath = Path.Combine(FinalImageDirectory, finalFileName);
 
         File.Move(tempImagePath, finalImagePath, overwrite: true);
 
-        var relativePath = Path.GetRelativePath(_finalImageDirectory, finalImagePath);
+        var relativePath = Path.GetRelativePath(AppPath.ExecutableDirectory, finalImagePath);
         return Task.FromResult(relativePath);
     }
 
     /// <inheritdoc />
     public Task CleanupTempImagesAsync(Guid? entryId)
     {
-        if (!Directory.Exists(_tempImageDirectory))
+        if (!Directory.Exists(TempImageDirectory))
         {
             return Task.CompletedTask;
         }
 
-        var files = Directory.GetFiles(_tempImageDirectory);
+        var files = Directory.GetFiles(TempImageDirectory);
 
         if (entryId.HasValue)
         {
