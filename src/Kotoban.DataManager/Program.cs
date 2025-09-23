@@ -74,87 +74,26 @@ public class Program
         // しかし、Scoped, Singleton, Transient の違いを学び、サービス登録による拡張性を理解した。
 
         var kotobanSettings = new KotobanSettings();
-        // このBindは、"Kotoban"セクションが存在しない場合や値がマッピングできない場合でも例外を投げず、kotobanSettingsのプロパティはデフォルト値のままになります。
         builder.Configuration.GetSection("Kotoban").Bind(kotobanSettings);
         builder.Services.AddSingleton(kotobanSettings);
 
-        // JSONデータファイルパスの処理
-        var jsonDataFilePath = kotobanSettings.JsonDataFilePath;
-        if (!Path.IsPathFullyQualified(jsonDataFilePath))
-        {
-            jsonDataFilePath = AppPath.GetAbsolutePath(jsonDataFilePath);
-        }
-
-        // JSONバックアップディレクトリの処理（%TEMP%プレースホルダーの処理）
-        var jsonBackupDirectory = kotobanSettings.JsonBackupDirectory;
-        if (string.Equals(jsonBackupDirectory, "%TEMP%", StringComparison.OrdinalIgnoreCase))
-        {
-            jsonBackupDirectory = Path.Combine(Path.GetTempPath(), "Kotoban", "Backups");
-        }
-        else if (!Path.IsPathFullyQualified(jsonBackupDirectory))
-        {
-            jsonBackupDirectory = AppPath.GetAbsolutePath(jsonBackupDirectory);
-        }
-
-        // 画像一時ディレクトリの処理（%TEMP%プレースホルダーの処理）
-        var imageTempDirectory = kotobanSettings.ImageTempDirectory;
-        if (string.Equals(imageTempDirectory, "%TEMP%", StringComparison.OrdinalIgnoreCase))
-        {
-            imageTempDirectory = Path.Combine(Path.GetTempPath(), "Kotoban", "Temp", "Images");
-        }
-        else if (!Path.IsPathFullyQualified(imageTempDirectory))
-        {
-            imageTempDirectory = AppPath.GetAbsolutePath(imageTempDirectory);
-        }
-
-        // 最終画像ディレクトリの処理
-        var dataFileDirectory = Path.GetDirectoryName(jsonDataFilePath) ?? AppPath.ExecutableDirectory;
-        var finalImageDirectory = Path.Combine(dataFileDirectory, kotobanSettings.RelativeImageDirectory);
-
-        builder.Services.AddSingleton<IEntryRepository>(provider =>
-        {
-            return new JsonEntryRepository(
-                jsonDataFilePath,
-                JsonRepositoryBackupMode.CreateCopyInTemp,
-                jsonBackupDirectory,
-                kotobanSettings.MaxBackupFiles
-            );
-        });
-
-        builder.Services.AddSingleton<IImageManager>(provider =>
-        {
-            return new ImageManager(
-                kotobanSettings,
-                finalImageDirectory,
-                imageTempDirectory
-            );
-        });
-
-        // =============================================================================
-
         var openAiSettings = new OpenAiSettings();
-        // このBindは、"OpenAi"セクションが存在しない場合や値がマッピングできない場合でも例外を投げず、openAiSettingsのプロパティはデフォルト値のままになります。
         builder.Configuration.GetSection("OpenAi").Bind(openAiSettings);
         builder.Services.AddSingleton(openAiSettings);
 
-        // OpenAiSettings は DI により OpenAiNetworkSettings や OpenAiRequestFactory のコンストラクタに自動的に注入されます。
+        builder.Services.AddSingleton<IEntryRepository, JsonEntryRepository>();
         builder.Services.AddSingleton<OpenAiNetworkSettings>();
         // OpenAiTransportContext は「トランスポート層の責務」を分離するため個別クラス化しています。
         // 認証やエンドポイントなど「リクエストモデル」や「ネットワーク設定モデル」に収まらない情報をまとめる用途です。
         // このアプリではインスタンスが複数必要になる場面はないため、シングルトンで登録しています（シンプルさ優先）。
         builder.Services.AddSingleton<OpenAiTransportContext>();
-        builder.Services.AddSingleton(provider =>
-        {
-            var kotobanSettings = provider.GetRequiredService<KotobanSettings>();
-            var openAiSettings = provider.GetRequiredService<OpenAiSettings>();
-            return new OpenAiRequestFactory(kotobanSettings, openAiSettings);
-        });
-
+        builder.Services.AddSingleton<OpenAiRequestFactory>();
+        builder.Services.AddSingleton<OpenAiApiClient>();
         // AddHttpClient() は IHttpClientFactory をDIコンテナに登録し、HttpClientのライフサイクル管理や拡張機能を有効にします。
         builder.Services.AddHttpClient();
-        builder.Services.AddSingleton<OpenAiApiClient>();
-        builder.Services.AddSingleton<IAiContentService, OpenAiContentService>();
         builder.Services.AddSingleton<WebClient>();
+        builder.Services.AddSingleton<IImageManager, ImageManager>();
+        builder.Services.AddSingleton<IAiContentService, OpenAiContentService>();
 
         // =============================================================================
 
@@ -181,6 +120,10 @@ public class Program
 
         var logger = host.Services.GetRequiredService<ILogger<Program>>();
 
+        // 起動時の情報の表示のために、インターフェースでなく実装の方を取得。
+        var repository = host.Services.GetRequiredService<JsonEntryRepository>();
+        var imageManager = host.Services.GetRequiredService<ImageManager>();
+
         try
         {
             // 長々と書いたが、このブロックのほとんどはアプリ名とバージョンの取得。
@@ -201,7 +144,11 @@ public class Program
             var versionString = version.Build == 0 ? $"{version.Major}.{version.Minor}" : version.ToString(3);
 
             Console.WriteLine($"{assemblyTitle} v{versionString}");
-            Console.WriteLine($"Data file: {jsonDataFilePath}");
+            Console.WriteLine($"Data file: {repository.DataFile}");
+            Console.WriteLine($"Backup directory: {repository.BackupDirectory}");
+            Console.WriteLine($"Final image directory: {imageManager.FinalImageDirectory}");
+            Console.WriteLine($"Temporary image directory: {imageManager.TempImageDirectory}");
+
             logger.LogInformation("Application starting.");
 
             // ここで host を丸ごと渡すのはベストプラクティスでないと。
@@ -211,7 +158,6 @@ public class Program
             // finally で無防備にやると例外が飛んだときに困る。
             // かといって、finally に try/catch を入れると、万が一にも永続的な問題が起こり始めた場合に気づけない。
             // ここでやるもう一つの利点は、RunApplicationLoop が落ちたなら一時画像が残ってくれてデバッグに役立ちうること。
-            var imageManager = host.Services.GetRequiredService<IImageManager>();
             await imageManager.CleanupTempImagesAsync(entryId: null);
         }
         catch (Exception ex)
