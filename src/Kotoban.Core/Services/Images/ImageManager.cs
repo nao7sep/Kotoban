@@ -30,11 +30,11 @@ public class ImageManager : IImageManager
     }
 
     /// <inheritdoc />
-    public Task<GeneratedImage?> StartImageEditingAsync(Entry entry)
+    public Task<SavedImage?> StartImageEditingAsync(Entry entry)
     {
         if (string.IsNullOrWhiteSpace(entry.RelativeImagePath))
         {
-            return Task.FromResult<GeneratedImage?>(null);
+            return Task.FromResult<SavedImage?>(null);
         }
 
         var currentImagePath = Path.Combine(_finalImageDirectory, entry.RelativeImagePath);
@@ -57,7 +57,7 @@ public class ImageManager : IImageManager
 
         File.Copy(currentImagePath, tempImagePath, overwrite: true);
 
-        var result = new GeneratedImage
+        var result = new SavedImage
         {
             RelativeImagePath = Path.GetRelativePath(_tempImageDirectory, tempImagePath),
             ImageContext = entry.ImageContext,
@@ -66,11 +66,11 @@ public class ImageManager : IImageManager
             ImagePrompt = entry.ImagePrompt
         };
 
-        return Task.FromResult<GeneratedImage?>(result);
+        return Task.FromResult<SavedImage?>(result);
     }
 
     /// <inheritdoc />
-    public async Task<GeneratedImage> SaveGeneratedImageAsync(
+    public async Task<SavedImage> SaveGeneratedImageAsync(
         Entry entry,
         byte[] imageBytes,
         string extension,
@@ -86,7 +86,7 @@ public class ImageManager : IImageManager
 
         await File.WriteAllBytesAsync(tempImagePath, imageBytes);
 
-        return new GeneratedImage
+        return new SavedImage
         {
             RelativeImagePath = Path.GetRelativePath(_tempImageDirectory, tempImagePath),
             ImageContext = imageContext,
@@ -96,7 +96,7 @@ public class ImageManager : IImageManager
     }
 
     /// <inheritdoc />
-    public Task<string> FinalizeImageAsync(Entry entry, GeneratedImage selectedImage)
+    public Task<string> FinalizeImageAsync(Entry entry, SavedImage selectedImage)
     {
         var tempImagePath = Path.Combine(_tempImageDirectory, selectedImage.RelativeImagePath);
         if (!File.Exists(tempImagePath))

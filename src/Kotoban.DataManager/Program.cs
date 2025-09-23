@@ -739,9 +739,6 @@ public class Program
 
     private static async Task GenerateOrUpdateAiContentAsync(Entry item, IServiceProvider services, AiContentAction action)
     {
-        var imageManager = services.GetRequiredService<IImageManager>();
-        var logger = services.GetRequiredService<ILogger<Program>>();
-
         Console.WriteLine();
         Console.WriteLine("=== 既存のAIコンテンツ ===");
         if (item.Explanations.Any())
@@ -759,26 +756,7 @@ public class Program
             Console.WriteLine("説明: なし");
         }
 
-        try
-        {
-            var existingImage = await imageManager.StartImageEditingAsync(item);
-            if (existingImage != null)
-            {
-                Console.WriteLine($"画像: あり (一時ファイル: {existingImage.RelativeImagePath})");
-            }
-            else
-            {
-                Console.WriteLine("画像: なし");
-            }
-        }
-        catch (Exception ex)
-        {
-            // この周辺ではあまり try/catch をやらないが、
-            // StartImageEditingAsync はデータの不整合でも投げてくるので、続行のために例外をキャッチ。
-            // このメソッドがログだけ吐いて続行というのがデザイン上どうしても気に入らなかった。
-            // よって、ライブラリーを厳密に動かせ、アプリ側を「ログして進む」のゆるさに。
-            logger.LogError(ex, "Error while preparing existing image for editing.");
-        }
+        Console.WriteLine($"画像: {(string.IsNullOrWhiteSpace(item.RelativeImagePath) ? "なし" : item.RelativeImagePath)}");
 
         while (true)
         {
@@ -824,13 +802,13 @@ public class Program
 
         // たぶんないが、参照の中身が更新されることも想定し、データをコピー。
         var originalExplanations = new Dictionary<ExplanationLevel, string>(item.Explanations);
-        var generatedList = new List<GeneratedExplanationResult?>(); // 失敗した回は null になる。
+        var generatedExplanationResults = new List<GeneratedExplanationResult?>(); // 失敗した回は null になる。
         var previousExplanationContext = item.ExplanationContext;
 
         while (true)
         {
             Console.WriteLine();
-            Console.WriteLine($"=== 説明の生成 (試行回数: {generatedList.Count + 1}) ===");
+            Console.WriteLine($"=== 説明の生成 (試行回数: {generatedExplanationResults.Count + 1}) ===");
 
             // Entry に入っているものでなく、前回試行時のものを使う。
             // 出力が惜しく、プロンプトに問題はなさそうだから再試行したいケースは、
@@ -841,21 +819,17 @@ public class Program
             try
             {
                 // 例外が飛ばなかったなら要素数は3になるのが保証されている。
-                var newExplanations = await aiContentService.GenerateExplanationsAsync(item, newExplanationContext);
-                foreach (var kvp in newExplanations)
+                var generatedExplanationResult = await aiContentService.GenerateExplanationsAsync(item, newExplanationContext);
+                foreach (var kvp in generatedExplanationResult.Explanations)
                 {
                     Console.WriteLine($"{kvp.Key}: {kvp.Value}");
                 }
-                generatedList.Add(new GeneratedExplanationResult
-                {
-                    Context = newExplanationContext,
-                    Explanations = newExplanations
-                });
+                generatedExplanationResults.Add(generatedExplanationResult);
             }
             catch (Exception ex)
             {
                 logger.LogError(ex, "Failed to generate AI explanations.");
-                generatedList.Add(null);
+                generatedExplanationResults.Add(null);
             }
 
             Console.WriteLine();
@@ -864,7 +838,7 @@ public class Program
             {
                 Console.WriteLine("0. オリジナルを使用する");
             }
-            for (int i = 0; i < generatedList.Count; i++)
+            for (int i = 0; i < generatedExplanationResults.Count; i++)
             {
                 Console.WriteLine($"{i + 1}. {i + 1}回目に生成した説明を使用する");
             }
@@ -878,10 +852,10 @@ public class Program
                 return;
             }
 
-            if (int.TryParse(choice, out int idx) && idx >= 1 && idx <= generatedList.Count && generatedList[idx - 1] != null)
+            if (int.TryParse(choice, out int idx) && idx >= 1 && idx <= generatedExplanationResults.Count && generatedExplanationResults[idx - 1] != null)
             {
                 // null でないと確認されるが、添え字が計算式だからか、null かもしれないと叱られる。
-                var selected = generatedList[idx - 1]!;
+                var selected = generatedExplanationResults[idx - 1]!;
                 item.RegisterGeneratedExplanations(selected.Context, selected.Explanations);
                 await repository.UpdateAsync(item);
                 Console.WriteLine($"{idx}回目の説明を保存しました。");

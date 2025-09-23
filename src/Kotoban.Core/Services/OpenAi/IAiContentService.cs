@@ -15,8 +15,10 @@ public interface IAiContentService
     /// </summary>
     /// <param name="entry">解説文を生成するエントリ。</param>
     /// <param name="newExplanationContext">生成に使用する新しいコンテキスト。</param>
-    /// <returns>生成された解説文のレベルとテキストを格納した辞書。</returns>
-    Task<Dictionary<ExplanationLevel, string>> GenerateExplanationsAsync(Entry entry, string? newExplanationContext);
+    /// <returns>
+    /// 生成された解説文とそのコンテキストを格納した <see cref="GeneratedExplanationResult"/>。
+    /// </returns>
+    Task<GeneratedExplanationResult> GenerateExplanationsAsync(Entry entry, string? newExplanationContext);
 
     /// <summary>
     /// AIを使用して指定されたエントリの画像を生成し、一時的に保存します。

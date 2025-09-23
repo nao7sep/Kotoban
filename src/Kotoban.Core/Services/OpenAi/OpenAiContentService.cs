@@ -38,7 +38,7 @@ public class OpenAiContentService : IAiContentService
     }
 
     /// <inheritdoc />
-    public async Task<Dictionary<ExplanationLevel, string>> GenerateExplanationsAsync(Entry entry, string? newExplanationContext)
+    public async Task<GeneratedExplanationResult> GenerateExplanationsAsync(Entry entry, string? newExplanationContext)
     {
         if (string.IsNullOrWhiteSpace(_settings.ExplanationPromptFormat))
         {
@@ -94,7 +94,11 @@ public class OpenAiContentService : IAiContentService
             throw new OpenAiException("Failed to parse explanations from AI response.");
         }
 
-        return newExplanations;
+        return new GeneratedExplanationResult
+        {
+            Context = newExplanationContext,
+            Explanations = newExplanations
+        };
     }
 
     /// <inheritdoc />
@@ -143,6 +147,7 @@ public class OpenAiContentService : IAiContentService
 
         return new GeneratedImageResult
         {
+            Context = newImageContext,
             ImageBytes = imageBytes,
             Extension = extension,
             ImagePrompt = imagePrompt

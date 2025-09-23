@@ -14,7 +14,7 @@ public interface IImageManager
     /// </summary>
     /// <param name="entry">編集対象のエントリ</param>
     /// <returns>既存の画像情報、または画像が存在しない場合はnull</returns>
-    Task<GeneratedImage?> StartImageEditingAsync(Entry entry);
+    Task<SavedImage?> StartImageEditingAsync(Entry entry);
 
     /// <summary>
     /// 生成された画像を一時ディレクトリに保存します。
@@ -27,7 +27,7 @@ public interface IImageManager
     /// <param name="generatedAtUtc">画像生成完了時刻</param>
     /// <param name="imagePrompt">画像生成に使用されたプロンプト</param>
     /// <returns>保存された画像の情報</returns>
-    Task<GeneratedImage> SaveGeneratedImageAsync(
+    Task<SavedImage> SaveGeneratedImageAsync(
         Entry entry,
         byte[] imageBytes,
         string extension,
@@ -42,7 +42,7 @@ public interface IImageManager
     /// <param name="entry">対象のエントリ</param>
     /// <param name="selectedImage">選択された画像情報</param>
     /// <returns>最終的な相対パス</returns>
-    Task<string> FinalizeImageAsync(Entry entry, GeneratedImage selectedImage);
+    Task<string> FinalizeImageAsync(Entry entry, SavedImage selectedImage);
 
     /// <summary>
     /// 一時画像ファイルをクリーンアップします。

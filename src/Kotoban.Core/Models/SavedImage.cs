@@ -5,7 +5,7 @@ namespace Kotoban.Core.Models;
 /// <summary>
 /// 生成された画像の情報を表します。
 /// </summary>
-public class GeneratedImage
+public class SavedImage
 {
     /// <summary>
     /// 画像ファイルの相対パス。
