@@ -53,6 +53,8 @@ public class OpenAiContentService : IAiContentService
             newExplanationContext
         );
 
+        _logger.LogTrace("Explanation prompt: {Prompt}", prompt);
+
         // Structured Outputs 用の response_format を匿名型でセット
         var responseFormat = new
         {
@@ -116,6 +118,8 @@ public class OpenAiContentService : IAiContentService
             entry.GeneralContext,
             newImageContext
         );
+
+        _logger.LogTrace("Image prompt: {Prompt}", prompt);
 
         var request = _openAiRequestFactory.CreateImageRequest(prompt);
         var tracer = new OpenAiTraceDictionary();

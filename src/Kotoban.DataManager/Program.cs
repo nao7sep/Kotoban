@@ -848,7 +848,10 @@ public class Program
             }
             for (int i = 0; i < generatedExplanationResults.Count; i++)
             {
-                Console.WriteLine($"{i + 1}. {i + 1}回目に生成した説明を使用する");
+                if (generatedExplanationResults[i] != null)
+                {
+                    Console.WriteLine($"{i + 1}. {i + 1}回目に生成した説明を使用する");
+                }
             }
             Console.WriteLine("r または Enter: もう一度生成する（リトライ）");
             Console.WriteLine("e: 終了する（キャンセル）");
@@ -936,7 +939,10 @@ public class Program
             }
             for (int i = 0; i < savedImages.Count; i++)
             {
-                Console.WriteLine($"{i + 1}. {i + 1}回目に生成した画像を使用する");
+                if (savedImages[i] != null)
+                {
+                    Console.WriteLine($"{i + 1}. {i + 1}回目に生成した画像を使用する");
+                }
             }
             Console.WriteLine("r または Enter: もう一度生成する（リトライ）");
             Console.WriteLine("e: 終了する（キャンセル）");
