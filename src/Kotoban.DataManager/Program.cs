@@ -820,11 +820,11 @@ public class Program
             {
                 // 例外が飛ばなかったなら要素数は3になるのが保証されている。
                 var generatedExplanationResult = await aiContentService.GenerateExplanationsAsync(item, newExplanationContext);
+                generatedExplanationResults.Add(generatedExplanationResult);
                 foreach (var kvp in generatedExplanationResult.Explanations)
                 {
                     Console.WriteLine($"{kvp.Key}: {kvp.Value}");
                 }
-                generatedExplanationResults.Add(generatedExplanationResult);
             }
             catch (Exception ex)
             {
@@ -836,7 +836,7 @@ public class Program
             Console.WriteLine("=== どうしまっか～？ ===");
             if (item.Explanations.Any())
             {
-                Console.WriteLine("0. オリジナルを使用する");
+                Console.WriteLine("0. オリジナルの説明を使用する");
             }
             for (int i = 0; i < generatedExplanationResults.Count; i++)
             {
@@ -848,8 +848,8 @@ public class Program
 
             if (choice == "0" && originalExplanations.Any())
             {
-                Console.WriteLine("オリジナルを保持します。");
-                return;
+                Console.WriteLine("オリジナルの説明を保持します。");
+                break;
             }
 
             if (int.TryParse(choice, out int idx) && idx >= 1 && idx <= generatedExplanationResults.Count && generatedExplanationResults[idx - 1] != null)
@@ -859,7 +859,7 @@ public class Program
                 item.RegisterGeneratedExplanations(selected.Context, selected.Explanations);
                 await repository.UpdateAsync(item);
                 Console.WriteLine($"{idx}回目の説明を保存しました。");
-                return;
+                break;
             }
 
             if (string.IsNullOrWhiteSpace(choice) || choice.Equals("r", StringComparison.OrdinalIgnoreCase))
@@ -869,12 +869,103 @@ public class Program
 
             if (choice.Equals("e", StringComparison.OrdinalIgnoreCase))
             {
-                return;
+                break;
             }
 
             Console.WriteLine("無効な選択です。");
         }
     }
+
+    private static async Task ManageImageAsync(Entry item, IServiceProvider services)
+    {
+        var repository = services.GetRequiredService<IEntryRepository>();
+        var aiContentService = services.GetRequiredService<IAiContentService>();
+        var imageManager = services.GetRequiredService<IImageManager>();
+        var logger = services.GetRequiredService<ILogger<Program>>();
+
+        SavedImage? originalImage = null;
+        var savedImages = new List<SavedImage?>(); // 失敗した回は null になる。
+        var previousImageContext = item.ImageContext;
+
+        try
+        {
+            originalImage = await imageManager.StartImageEditingAsync(item);
+        }
+        catch (Exception ex)
+        {
+            // StartImageEditingAsync はデータの不整合でも投げてくるので、続行のために例外をキャッチ。
+            // このメソッドがログだけ吐いて続行というのがデザイン上どうしても気に入らなかった。
+            // よって、ライブラリーを厳密に動かせ、アプリ側を「ログして進む」のゆるさに。
+            logger.LogError(ex, "Error preparing original image.");
+        }
+
+        while (true)
+        {
+            Console.WriteLine();
+            Console.WriteLine($"=== 画像の生成 (試行回数: {savedImages.Count + 1}) ===");
+
+            var newImageContext = ReadString($"新しい画像生成用のコンテキスト (変更しない場合はEnter): ", previousImageContext);
+            previousImageContext = newImageContext;
+
+            try
+            {
+                var generatedImageResult = await aiContentService.GenerateImageAsync(item, newImageContext);
+                var savedImage = await imageManager.SaveGeneratedImageAsync(item, generatedImageResult.ImageBytes, generatedImageResult.Extension, savedImages.Count + 1, generatedImageResult.Context, DateTime.UtcNow, generatedImageResult.ImagePrompt);
+                savedImages.Add(savedImage);
+                Console.WriteLine($"画像を生成しました: {savedImage.RelativeImagePath}");
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to generate or save AI image.");
+                savedImages.Add(null);
+            }
+
+            Console.WriteLine();
+            Console.WriteLine("=== どうしまっか～？ ===");
+            if (originalImage != null)
+            {
+                Console.WriteLine("0. オリジナルの画像を使用する");
+            }
+            for (int i = 0; i < savedImages.Count; i++)
+            {
+                Console.WriteLine($"{i + 1}. {i + 1}回目に生成した画像を使用する");
+            }
+            Console.WriteLine("r または Enter: もう一度生成する（リトライ）");
+            Console.WriteLine("e: 終了する（キャンセル）");
+            var choice = ReadString("選択してください: ");
+
+            if (choice == "0" && originalImage != null)
+            {
+                Console.WriteLine("オリジナルの画像を保持します。");
+                break;
+            }
+
+            if (int.TryParse(choice, out int idx) && idx >= 1 && idx <= savedImages.Count && savedImages[idx - 1] != null)
+            {
+                // null でないと確認されるが、添え字が計算式だからか、null かもしれないと叱られる。
+                var selected = savedImages[idx - 1]!;
+                var imagePath = await imageManager.FinalizeImageAsync(item, selected);
+                item.RegisterGeneratedImage(selected.ImageContext, imagePath, selected.ImagePrompt);
+                await repository.UpdateAsync(item);
+                Console.WriteLine($"{idx}回目の画像を保存しました。");
+                break;
+            }
+
+            if (string.IsNullOrWhiteSpace(choice) || choice.Equals("r", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            if (choice.Equals("e", StringComparison.OrdinalIgnoreCase))
+            {
+                break;
+            }
+
+            Console.WriteLine("無効な選択です。");
+        }
+
+        await imageManager.CleanupTempImagesAsync(item.Id);
+        Console.WriteLine("一時ファイルをクリーンアップしました。");
     }
 
     private static async Task ApproveAiContentAsync(Entry item, IServiceProvider services)
