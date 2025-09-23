@@ -15,7 +15,7 @@ public static class DirectoryUtils
     public static void EnsureParentDirectoryExists(string path)
     {
         var directory = Path.GetDirectoryName(path);
-        if (!string.IsNullOrEmpty(directory))
+        if (!string.IsNullOrWhiteSpace(directory))
         {
             Directory.CreateDirectory(directory);
         }

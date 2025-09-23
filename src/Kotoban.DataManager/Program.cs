@@ -7,6 +7,7 @@ using System.Reflection;
 using System.Threading.Tasks;
 using Kotoban.Core.Models;
 using Kotoban.Core.Persistence;
+using Kotoban.Core.Services.Images;
 using Kotoban.Core.Services.OpenAi;
 using Kotoban.Core.Services.Web;
 using Kotoban.Core.Utils;
@@ -87,6 +88,21 @@ public class Program
             jsonBackupDirectory = AppPath.GetAbsolutePath(jsonBackupDirectory);
         }
 
+        // 画像一時ディレクトリの処理（%TEMP%プレースホルダーの処理）
+        var imageTempDirectory = kotobanSettings.ImageTempDirectory;
+        if (string.Equals(imageTempDirectory, "%TEMP%", StringComparison.OrdinalIgnoreCase))
+        {
+            imageTempDirectory = Path.Combine(Path.GetTempPath(), "Kotoban", "Temp", "Images");
+        }
+        else if (!Path.IsPathFullyQualified(imageTempDirectory))
+        {
+            imageTempDirectory = AppPath.GetAbsolutePath(imageTempDirectory);
+        }
+
+        // 最終画像ディレクトリの処理
+        var dataFileDirectory = Path.GetDirectoryName(jsonDataFilePath) ?? AppPath.ExecutableDirectory;
+        var finalImageDirectory = Path.Combine(dataFileDirectory, kotobanSettings.RelativeImageDirectory);
+
         builder.Services.AddSingleton<IEntryRepository>(provider =>
         {
             return new JsonEntryRepository(
@@ -94,6 +110,15 @@ public class Program
                 JsonRepositoryBackupMode.CreateCopyInTemp,
                 jsonBackupDirectory,
                 kotobanSettings.MaxBackupFiles
+            );
+        });
+
+        builder.Services.AddSingleton<IImageManager>(provider =>
+        {
+            return new ImageManager(
+                kotobanSettings,
+                finalImageDirectory,
+                imageTempDirectory
             );
         });
 
@@ -167,6 +192,13 @@ public class Program
 
             // ここで host を丸ごと渡すのはベストプラクティスでないと。
             await RunApplicationLoop(host.Services);
+
+            // 一時画像を掃除するなら、ここが一番の場所。
+            // finally で無防備にやると例外が飛んだときに困る。
+            // かといって、finally に try/catch を入れると、万が一にも永続的な問題が起こり始めた場合に気づけない。
+            // ここでやるもう一つの利点は、RunApplicationLoop が落ちたなら一時画像が残ってくれてデバッグに役立ちうること。
+            var imageManager = host.Services.GetRequiredService<IImageManager>();
+            await imageManager.CleanupTempImagesAsync(entryId: null);
         }
         catch (Exception ex)
         {

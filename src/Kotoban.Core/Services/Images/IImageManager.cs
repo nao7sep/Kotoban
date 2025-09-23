@@ -1,0 +1,50 @@
+using System;
+using System.Threading.Tasks;
+using Kotoban.Core.Models;
+
+namespace Kotoban.Core.Services.Images;
+
+/// <summary>
+/// 画像ファイルの管理とワークフローを提供するサービス。
+/// </summary>
+public interface IImageManager
+{
+    /// <summary>
+    /// 画像編集セッションを開始します。既存の画像がある場合は一時ディレクトリにコピーします。
+    /// </summary>
+    /// <param name="entry">編集対象のエントリ</param>
+    /// <returns>既存の画像情報、または画像が存在しない場合はnull</returns>
+    Task<GeneratedImage?> StartImageEditingAsync(Entry entry);
+
+    /// <summary>
+    /// 生成された画像を一時ディレクトリに保存します。
+    /// </summary>
+    /// <param name="entry">対象のエントリ</param>
+    /// <param name="imageData">画像データ</param>
+    /// <param name="extension">ファイル拡張子</param>
+    /// <param name="imageContext">画像生成用のコンテキスト</param>
+    /// <param name="generatedAtUtc">画像生成完了時刻</param>
+    /// <param name="imagePrompt">画像生成に使用されたプロンプト</param>
+    /// <returns>保存された画像の情報</returns>
+    Task<GeneratedImage> SaveGeneratedImageAsync(
+        Entry entry,
+        byte[] imageData,
+        string extension,
+        string? imageContext,
+        DateTime generatedAtUtc,
+        string? imagePrompt);
+
+    /// <summary>
+    /// 選択された画像を最終的な保存場所に移動します。
+    /// </summary>
+    /// <param name="entry">対象のエントリ</param>
+    /// <param name="selectedImage">選択された画像情報</param>
+    /// <returns>最終的な相対パス</returns>
+    Task<string> FinalizeImageAsync(Entry entry, GeneratedImage selectedImage);
+
+    /// <summary>
+    /// 一時画像ファイルをクリーンアップします。
+    /// </summary>
+    /// <param name="entryId">対象のエントリID。nullの場合は全ての一時画像を削除</param>
+    Task CleanupTempImagesAsync(Guid? entryId);
+}
