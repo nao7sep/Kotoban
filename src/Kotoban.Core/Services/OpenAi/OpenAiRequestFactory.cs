@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Kotoban.Core.Models;
 using Kotoban.Core.Services.OpenAi.Models;
 
 namespace Kotoban.Core.Services.OpenAi;
@@ -9,6 +10,9 @@ namespace Kotoban.Core.Services.OpenAi;
 /// </summary>
 public class OpenAiRequestFactory
 {
+    private readonly KotobanSettings _kotobanSettings;
+    private readonly OpenAiSettings _openAiSettings;
+
     /// <summary>
     /// チャットモデル名。
     /// </summary>
@@ -22,21 +26,25 @@ public class OpenAiRequestFactory
     /// <summary>
     /// DI された設定から新しいインスタンスを生成します。
     /// </summary>
-    /// <param name="settings">OpenAI 設定</param>
+    /// <param name="kotobanSettings">Kotoban 設定</param>
+    /// <param name="openAiSettings">OpenAI 設定</param>
     /// <exception cref="InvalidOperationException">必須設定が不足している場合</exception>
-    public OpenAiRequestFactory(OpenAiSettings settings)
+    public OpenAiRequestFactory(KotobanSettings kotobanSettings, OpenAiSettings openAiSettings)
     {
-        if (string.IsNullOrWhiteSpace(settings.ChatModel))
+        if (string.IsNullOrWhiteSpace(openAiSettings.ChatModel))
         {
             throw new InvalidOperationException("ChatModel is required.");
         }
-        if (string.IsNullOrWhiteSpace(settings.ImageModel))
+        if (string.IsNullOrWhiteSpace(openAiSettings.ImageModel))
         {
             throw new InvalidOperationException("ImageModel is required.");
         }
 
-        ChatModel = settings.ChatModel;
-        ImageModel = settings.ImageModel;
+        _kotobanSettings = kotobanSettings;
+        _openAiSettings = openAiSettings;
+
+        ChatModel = openAiSettings.ChatModel;
+        ImageModel = openAiSettings.ImageModel;
     }
 
     /// <summary>
@@ -95,6 +103,7 @@ public class OpenAiRequestFactory
     /// <param name="prompt">画像生成プロンプト</param>
     /// <param name="n">生成する画像の枚数（デフォルト: 1）</param>
     /// <param name="size">画像サイズ（省略可能）</param>
+    /// <param name="quality">画質（省略可能）</param>
     /// <param name="responseFormat">レスポンス形式（省略可能）</param>
     /// <param name="additionalData">追加パラメータ（省略可能）</param>
     /// <returns>画像生成リクエスト</returns>

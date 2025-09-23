@@ -46,5 +46,15 @@ namespace Kotoban.Core.Models
         /// 一時画像ファイルの命名パターン。{0}=エントリID、{1}=タイムスタンプ、{2}=拡張子
         /// </summary>
         public string TempImageFileNamePattern { get; set; } = "{0}-{1}{2}";
+
+        /// <summary>
+        /// 解説文生成のためのプロンプトフォーマット。
+        /// </summary>
+        public string ExplanationPromptFormat { get; set; } = string.Empty;
+
+        /// <summary>
+        /// 画像生成のためのプロンプトフォーマット。
+        /// </summary>
+        public string ImagePromptFormat { get; set; } = string.Empty;
     }
 }

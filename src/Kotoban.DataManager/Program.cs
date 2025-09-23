@@ -135,7 +135,12 @@ public class Program
         // 認証やエンドポイントなど「リクエストモデル」や「ネットワーク設定モデル」に収まらない情報をまとめる用途です。
         // このアプリではインスタンスが複数必要になる場面はないため、シングルトンで登録しています（シンプルさ優先）。
         builder.Services.AddSingleton<OpenAiTransportContext>();
-        builder.Services.AddSingleton<OpenAiRequestFactory>();
+        builder.Services.AddSingleton(provider =>
+        {
+            var kotobanSettings = provider.GetRequiredService<KotobanSettings>();
+            var openAiSettings = provider.GetRequiredService<OpenAiSettings>();
+            return new OpenAiRequestFactory(kotobanSettings, openAiSettings);
+        });
 
         // AddHttpClient() は IHttpClientFactory をDIコンテナに登録し、HttpClientのライフサイクル管理や拡張機能を有効にします。
         builder.Services.AddHttpClient();

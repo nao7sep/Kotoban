@@ -6,6 +6,11 @@
 public class OpenAiTransportContext
 {
     /// <summary>
+    /// OpenAI API の設定。
+    /// </summary>
+    private readonly OpenAiSettings _openAiSettings;
+
+    /// <summary>
     /// API キー。
     /// </summary>
     public string ApiKey { get; set; }
@@ -21,7 +26,8 @@ public class OpenAiTransportContext
     /// <param name="settings">OpenAI API 設定</param>
     public OpenAiTransportContext(OpenAiSettings settings)
     {
-        // OpenAiSettings から必要な値をコピー
+        _openAiSettings = settings;
+
         ApiKey = settings.ApiKey;
         ApiBase = settings.ApiBase;
     }
