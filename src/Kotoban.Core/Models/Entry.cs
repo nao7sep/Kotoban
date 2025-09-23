@@ -91,9 +91,11 @@ public class Entry
     /// <summary>
     /// 生成されたAIの説明を登録します。
     /// </summary>
+    /// <param name="explanationContext">説明生成に使用されたコンテキスト</param>
     /// <param name="newExplanations">新しい説明のディクショナリ</param>
-    public void RegisterGeneratedExplanations(Dictionary<ExplanationLevel, string> newExplanations)
+    public void RegisterGeneratedExplanations(string? explanationContext, Dictionary<ExplanationLevel, string> newExplanations)
     {
+        ExplanationContext = explanationContext;
         Explanations = newExplanations;
         ExplanationGeneratedAtUtc = DateTime.UtcNow;
         // 今のところ必須なのは説明だけ。
@@ -105,10 +107,12 @@ public class Entry
     /// <summary>
     /// 生成されたAIの画像を登録します。
     /// </summary>
+    /// <param name="imageContext">画像生成に使用されたコンテキスト</param>
     /// <param name="imagePath">画像の相対パス</param>
     /// <param name="imagePrompt">画像の生成に使用されたプロンプト</param>
-    public void RegisterGeneratedImage(string imagePath, string? imagePrompt)
+    public void RegisterGeneratedImage(string? imageContext, string imagePath, string? imagePrompt)
     {
+        ImageContext = imageContext;
         RelativeImagePath = imagePath;
         ImagePrompt = imagePrompt;
         ImageGeneratedAtUtc = DateTime.UtcNow;

@@ -815,6 +815,92 @@ public class Program
             }
         }
     }
+
+    private static async Task ManageExplanationsAsync(Entry item, IServiceProvider services)
+    {
+        var repository = services.GetRequiredService<IEntryRepository>();
+        var aiContentService = services.GetRequiredService<IAiContentService>();
+        var logger = services.GetRequiredService<ILogger<Program>>();
+
+        // たぶんないが、参照の中身が更新されることも想定し、データをコピー。
+        var originalExplanations = new Dictionary<ExplanationLevel, string>(item.Explanations);
+        var generatedList = new List<GeneratedExplanationResult?>(); // 失敗した回は null になる。
+        var previousExplanationContext = item.ExplanationContext;
+
+        while (true)
+        {
+            Console.WriteLine();
+            Console.WriteLine($"=== 説明の生成 (試行回数: {generatedList.Count + 1}) ===");
+
+            // Entry に入っているものでなく、前回試行時のものを使う。
+            // 出力が惜しく、プロンプトに問題はなさそうだから再試行したいケースは、
+            // 出力がダメだから最初のものに立ち返りたいケースより頻度が高い。
+            var newExplanationContext = ReadString($"新しい説明生成用のコンテキスト (変更しない場合はEnter): ", previousExplanationContext);
+            previousExplanationContext = newExplanationContext;
+
+            try
+            {
+                // 例外が飛ばなかったなら要素数は3になるのが保証されている。
+                var newExplanations = await aiContentService.GenerateExplanationsAsync(item, newExplanationContext);
+                foreach (var kvp in newExplanations)
+                {
+                    Console.WriteLine($"{kvp.Key}: {kvp.Value}");
+                }
+                generatedList.Add(new GeneratedExplanationResult
+                {
+                    Context = newExplanationContext,
+                    Explanations = newExplanations
+                });
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to generate AI explanations.");
+                generatedList.Add(null);
+            }
+
+            Console.WriteLine();
+            Console.WriteLine("=== どうしまっか～？ ===");
+            if (item.Explanations.Any())
+            {
+                Console.WriteLine("0. オリジナルを使用する");
+            }
+            for (int i = 0; i < generatedList.Count; i++)
+            {
+                Console.WriteLine($"{i + 1}. {i + 1}回目に生成した説明を使用する");
+            }
+            Console.WriteLine("r または Enter: もう一度生成する（リトライ）");
+            Console.WriteLine("e: 終了する（キャンセル）");
+            var choice = ReadString("選択してください: ");
+
+            if (choice == "0" && originalExplanations.Any())
+            {
+                Console.WriteLine("オリジナルを保持します。");
+                return;
+            }
+
+            if (int.TryParse(choice, out int idx) && idx >= 1 && idx <= generatedList.Count && generatedList[idx - 1] != null)
+            {
+                // null でないと確認されるが、添え字が計算式だからか、null かもしれないと叱られる。
+                var selected = generatedList[idx - 1]!;
+                item.RegisterGeneratedExplanations(selected.Context, selected.Explanations);
+                await repository.UpdateAsync(item);
+                Console.WriteLine($"{idx}回目の説明を保存しました。");
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(choice) || choice.Equals("r", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            if (choice.Equals("e", StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
+            Console.WriteLine("無効な選択です。");
+        }
+    }
     }
 
     private static async Task ApproveAiContentAsync(Entry item, IServiceProvider services)
