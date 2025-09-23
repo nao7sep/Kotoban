@@ -52,8 +52,7 @@ public class ImageManager : IImageManager
         Directory.CreateDirectory(_tempImageDirectory);
 
         var extension = Path.GetExtension(entry.RelativeImagePath);
-        var timestamp = DateTimeUtils.UtcNowTimestamp();
-        var tempFileName = string.Format(_settings.TempImageFileNamePattern, entry.Id, timestamp, extension);
+        var tempFileName = string.Format(_settings.TempImageFileNamePattern, entry.Id, "0", extension);
         var tempImagePath = Path.Combine(_tempImageDirectory, tempFileName);
 
         File.Copy(currentImagePath, tempImagePath, overwrite: true);
@@ -75,14 +74,14 @@ public class ImageManager : IImageManager
         Entry entry,
         byte[] imageData,
         string extension,
+        int attemptNumber,
         string? imageContext,
         DateTime generatedAtUtc,
         string? imagePrompt)
     {
         Directory.CreateDirectory(_tempImageDirectory);
 
-        var timestamp = generatedAtUtc.ToString(DateTimeUtils.TimestampFormat);
-        var tempFileName = string.Format(_settings.TempImageFileNamePattern, entry.Id, timestamp, extension);
+        var tempFileName = string.Format(_settings.TempImageFileNamePattern, entry.Id, attemptNumber, extension);
         var tempImagePath = Path.Combine(_tempImageDirectory, tempFileName);
 
         await File.WriteAllBytesAsync(tempImagePath, imageData);

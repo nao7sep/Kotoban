@@ -22,6 +22,7 @@ public interface IImageManager
     /// <param name="entry">対象のエントリ</param>
     /// <param name="imageData">画像データ</param>
     /// <param name="extension">ファイル拡張子</param>
+    /// <param name="attemptNumber">試行回数</param>
     /// <param name="imageContext">画像生成用のコンテキスト</param>
     /// <param name="generatedAtUtc">画像生成完了時刻</param>
     /// <param name="imagePrompt">画像生成に使用されたプロンプト</param>
@@ -30,6 +31,7 @@ public interface IImageManager
         Entry entry,
         byte[] imageData,
         string extension,
+        int attemptNumber,
         string? imageContext,
         DateTime generatedAtUtc,
         string? imagePrompt);

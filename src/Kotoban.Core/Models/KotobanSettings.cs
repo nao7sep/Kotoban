@@ -43,7 +43,7 @@ namespace Kotoban.Core.Models
         public string FinalImageFileNamePattern { get; set; } = "{0}{1}";
 
         /// <summary>
-        /// 一時画像ファイルの命名パターン。{0}=エントリID、{1}=タイムスタンプ、{2}=拡張子
+        /// 一時画像ファイルの命名パターン。{0}=エントリID、{1}=試行回数または「0」（既存画像）、{2}=拡張子
         /// </summary>
         public string TempImageFileNamePattern { get; set; } = "{0}-{1}{2}";
 
