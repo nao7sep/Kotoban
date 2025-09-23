@@ -10,19 +10,19 @@ public class OpenAiNetworkSettings
     /// <summary>
     /// OpenAI API の設定。
     /// </summary>
-    private readonly OpenAiSettings _openAiSettings;
+    private readonly OpenAiSettings _settings;
 
     /// <summary>
     /// OpenAI API リクエストのデフォルトタイムアウト時間。
     /// </summary>
-    public TimeSpan Timeout { get; set; }
+    public TimeSpan Timeout { get; }
 
     /// <summary>
     /// DI用: OpenAiSettings からタイムアウト値を取得して初期化します。
     /// </summary>
     public OpenAiNetworkSettings(OpenAiSettings settings)
     {
-        _openAiSettings = settings;
-        Timeout = settings.Timeout;
+        _settings = settings;
+        Timeout = _settings.Timeout;
     }
 }

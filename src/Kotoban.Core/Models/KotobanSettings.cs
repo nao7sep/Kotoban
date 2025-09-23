@@ -10,15 +10,13 @@ namespace Kotoban.Core.Models
         /// <summary>
         /// JSONデータファイルのパス。相対パスまたは絶対パスを指定可能。
         /// </summary>
-        public string JsonDataFilePath { get; set; } = "Kotoban-Data.json";
+        public string JsonDataFile { get; set; } = "Kotoban-Data.json";
 
         /// <summary>
-        /// JSONファイルのバックアップ用ディレクトリパス。"%TEMP%"を指定するとユーザーのテンポラリフォルダを指す。
-        /// アプリケーションは通常、このパスに"Kotoban/Backups"などのサブディレクトリを追加することが推奨される。
-        /// そういうのもライブラリーでやってしまえるが、柔軟性を残すため、
-        /// JsonEntryRepository には KotobanSettings でなくパスを注入するようにしている。
+        /// ファイルのバックアップ用ディレクトリパス。
+        /// "%TEMP%"を指定するとユーザーのテンポラリフォルダに"Kotoban/Backups"が連結されたものが使われる。
         /// </summary>
-        public string JsonBackupDirectory { get; set; } = "%TEMP%";
+        public string BackupDirectory { get; set; } = "%TEMP%";
 
         /// <summary>
         /// 保持するバックアップファイルの最大数。
@@ -31,11 +29,10 @@ namespace Kotoban.Core.Models
         public string RelativeImageDirectory { get; set; } = "Kotoban-Files/Images";
 
         /// <summary>
-        /// 画像編集時の一時ファイル用ディレクトリパス。"%TEMP%"を指定するとユーザーのテンポラリフォルダを指す。
-        /// アプリケーションは通常、このパスに"Kotoban/Temp/Images"などのサブディレクトリを追加することが推奨される。
-        /// JsonBackupDirectory と同様の理由で、ImageManager には KotobanSettings でなくパスを注入するようにしている。
+        /// 画像編集時の一時ファイル用ディレクトリパス。
+        /// "%TEMP%"を指定するとユーザーのテンポラリフォルダに"Kotoban/Temp/Images"が連結されたものが使われる。
         /// </summary>
-        public string ImageTempDirectory { get; set; } = "%TEMP%";
+        public string TempImageDirectory { get; set; } = "%TEMP%";
 
         /// <summary>
         /// 最終画像ファイルの命名パターン。{0}=エントリID、{1}=拡張子
@@ -48,13 +45,13 @@ namespace Kotoban.Core.Models
         public string TempImageFileNamePattern { get; set; } = "{0}-{1}{2}";
 
         /// <summary>
-        /// 解説文生成のためのプロンプトフォーマット。
+        /// 解説文生成のためのプロンプトフォーマットファイルへのパス。
         /// </summary>
-        public string ExplanationPromptFormat { get; set; } = string.Empty;
+    public string ExplanationPromptFormatFile { get; set; } = "ExplanationPromptFormat.txt";
 
         /// <summary>
-        /// 画像生成のためのプロンプトフォーマット。
+        /// 画像生成のためのプロンプトフォーマットファイルへのパス。
         /// </summary>
-        public string ImagePromptFormat { get; set; } = string.Empty;
+    public string ImagePromptFormatFile { get; set; } = "ImagePromptFormat.txt";
     }
 }

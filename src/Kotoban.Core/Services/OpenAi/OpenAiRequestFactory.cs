@@ -10,8 +10,7 @@ namespace Kotoban.Core.Services.OpenAi;
 /// </summary>
 public class OpenAiRequestFactory
 {
-    private readonly KotobanSettings _kotobanSettings;
-    private readonly OpenAiSettings _openAiSettings;
+    private readonly OpenAiSettings _settings;
 
     /// <summary>
     /// チャットモデル名。
@@ -26,25 +25,22 @@ public class OpenAiRequestFactory
     /// <summary>
     /// DI された設定から新しいインスタンスを生成します。
     /// </summary>
-    /// <param name="kotobanSettings">Kotoban 設定</param>
-    /// <param name="openAiSettings">OpenAI 設定</param>
+    /// <param name="settings">OpenAI 設定</param>
     /// <exception cref="InvalidOperationException">必須設定が不足している場合</exception>
-    public OpenAiRequestFactory(KotobanSettings kotobanSettings, OpenAiSettings openAiSettings)
+    public OpenAiRequestFactory(OpenAiSettings settings)
     {
-        if (string.IsNullOrWhiteSpace(openAiSettings.ChatModel))
+        if (string.IsNullOrWhiteSpace(settings.ChatModel))
         {
             throw new InvalidOperationException("ChatModel is required.");
         }
-        if (string.IsNullOrWhiteSpace(openAiSettings.ImageModel))
+        if (string.IsNullOrWhiteSpace(settings.ImageModel))
         {
             throw new InvalidOperationException("ImageModel is required.");
         }
 
-        _kotobanSettings = kotobanSettings;
-        _openAiSettings = openAiSettings;
-
-        ChatModel = openAiSettings.ChatModel;
-        ImageModel = openAiSettings.ImageModel;
+        _settings = settings;
+        ChatModel = _settings.ChatModel;
+        ImageModel = _settings.ImageModel;
     }
 
     /// <summary>

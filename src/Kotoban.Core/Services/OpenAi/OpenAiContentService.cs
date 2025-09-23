@@ -1,10 +1,12 @@
-using System;
+using System.IO;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Kotoban.Core.Models;
+using Kotoban.Core.Services.Prompt;
 using Kotoban.Core.Services.Web;
+using Kotoban.Core.Utils;
 using Microsoft.Extensions.Logging;
 
 namespace Kotoban.Core.Services.OpenAi;
@@ -14,22 +16,31 @@ namespace Kotoban.Core.Services.OpenAi;
 /// </summary>
 public class OpenAiContentService : IAiContentService
 {
-    private readonly KotobanSettings _settings;
+    private readonly IPromptFormatProvider _promptFormatProvider;
     private readonly OpenAiTransportContext _transportContext;
     private readonly OpenAiRequestFactory _openAiRequestFactory;
     private readonly OpenAiApiClient _openAiApiClient;
     private readonly WebClient _webClient;
     private readonly ILogger<OpenAiContentService> _logger;
 
+    /// <summary>
+    /// コンストラクタ。依存サービスを注入する。
+    /// </summary>
+    /// <param name="promptFormatProvider">プロンプトフォーマットプロバイダー</param>
+    /// <param name="transportContext">OpenAI通信コンテキスト</param>
+    /// <param name="openAiRequestFactory">OpenAIリクエストファクトリ</param>
+    /// <param name="openAiApiClient">OpenAI APIクライアント</param>
+    /// <param name="webClient">Webクライアント</param>
+    /// <param name="logger">ロガー</param>
     public OpenAiContentService(
-        KotobanSettings settings,
+        IPromptFormatProvider promptFormatProvider,
         OpenAiTransportContext transportContext,
         OpenAiRequestFactory openAiRequestFactory,
         OpenAiApiClient openAiApiClient,
         WebClient webClient,
         ILogger<OpenAiContentService> logger)
     {
-        _settings = settings;
+        _promptFormatProvider = promptFormatProvider;
         _transportContext = transportContext;
         _openAiRequestFactory = openAiRequestFactory;
         _openAiApiClient = openAiApiClient;
@@ -40,13 +51,11 @@ public class OpenAiContentService : IAiContentService
     /// <inheritdoc />
     public async Task<GeneratedExplanationResult> GenerateExplanationsAsync(Entry entry, string? newExplanationContext)
     {
-        if (string.IsNullOrWhiteSpace(_settings.ExplanationPromptFormat))
-        {
-            throw new InvalidOperationException("ExplanationPromptFormat is not configured.");
-        }
+        // プロンプトフォーマットをプロバイダーから取得
+        var promptFormat = _promptFormatProvider.GetExplanationPromptFormat();
 
         var prompt = string.Format(
-            _settings.ExplanationPromptFormat,
+            promptFormat,
             entry.Reading,
             entry.Expression,
             entry.GeneralContext,
@@ -106,13 +115,11 @@ public class OpenAiContentService : IAiContentService
     /// <inheritdoc />
     public async Task<GeneratedImageResult> GenerateImageAsync(Entry entry, string? newImageContext)
     {
-        if (string.IsNullOrWhiteSpace(_settings.ImagePromptFormat))
-        {
-            throw new InvalidOperationException("ImagePromptFormat is not configured.");
-        }
+        // プロンプトフォーマットをプロバイダーから取得
+        var promptFormat = _promptFormatProvider.GetImagePromptFormat();
 
         var prompt = string.Format(
-            _settings.ImagePromptFormat,
+            promptFormat,
             entry.Reading,
             entry.Expression,
             entry.GeneralContext,
