@@ -9,6 +9,7 @@ using Kotoban.Core.Models;
 using Kotoban.Core.Persistence;
 using Kotoban.Core.Services.Images;
 using Kotoban.Core.Services.OpenAi;
+using Kotoban.Core.Services.Prompt;
 using Kotoban.Core.Services.Web;
 using Kotoban.Core.Utils;
 using Microsoft.Extensions.DependencyInjection;
@@ -73,6 +74,34 @@ public class Program
         // AI がやりだしたときには、「Program.メンバー」または「ほかのクラス.静的メンバー」でよいのではと思った。
         // しかし、Scoped, Singleton, Transient の違いを学び、サービス登録による拡張性を理解した。
 
+        // しばらくしての追記: クラスのインスタンスを生成して Add* するもの、
+        // <インターフェース, クラス> と書くもの、<インターフェース>(インスタンス) と書くものが混在するように。
+        //
+        // まず <I, C> は、型指定が I でも C でも取れるインスタンスを DI により生成する。
+        // コンストラクターに必要なサービスがその時点で見つからないと、「解決できない」を旨とする例外が飛ぶ。
+        // <Int>(Ins) は、すぐに Ins を使いたいときや、その初期化を自分で行いたいときに適する。
+        // (I) だけのものは、インターフェースのあるクラスには適さない。
+        //
+        // インターフェースのあるクラスに（インターフェースにはない）固有の機能を入れて、
+        // クラスの型によりインスタンスを取得してそれらを使うのは、たぶんどこかに改善の余地がある。
+        // DataFile などが欲しくて Main メソッドではそれに近いことをしているが、
+        // どうせ DataManager では SQL データベースに対応しないだろうから、
+        // もうちょっとシンプルにつくってもよかったかもしれない。
+        //
+        // サービス管理をやってみての教訓は、次の通り。
+        // - 設定のセクションごとにドメインモデルをつくり、そこには生データをそのまま入れておく。
+        // - 実装を切り替えうるサービスクラスなら、インターフェースをつくり、少なくともロジックは切り替えられるのを保証する。
+        // - 基本的にあらゆるサービスクラスを DI ベースでつくり、外部で加工したパラメーターを受け付けない。
+        // - それぞれのサービスクラスで加工したデータを、共益性があるなら、すぐには不要でもプロパティーとして公開する。
+        //
+        // 今回のコードは、入念にリファクタリングしたので、それなりにちゃんとした設計のはず。
+        // ただ、永続的ストレージに関するところのみ、「どうせ JSON しか対応しない」との前提で妥協している。
+        //
+        // いろいろなデータソースに対応するプロジェクトなら、たとえばバックアップ方法はそれぞれ大きく異なるだろうから、
+        // appsettings.json などには PersistentStorageSettings などをつくり、その中に Json, Sql などをつくり、
+        // IPersistentStorageSettings をつくり、JsonPersistentStorageSettings, SqlPersistentStorageSettings などを実装するのが一つの方法。
+        // Json, Sql などの上位にある共通的な項目も入れておきながらも、下位でそれぞれの値を上書きできれば、シンプルな実装で多くのことができそう。
+
         var kotobanSettings = new KotobanSettings();
         builder.Configuration.GetSection("Kotoban").Bind(kotobanSettings);
         builder.Services.AddSingleton(kotobanSettings);
@@ -81,18 +110,30 @@ public class Program
         builder.Configuration.GetSection("OpenAi").Bind(openAiSettings);
         builder.Services.AddSingleton(openAiSettings);
 
-        builder.Services.AddSingleton<IEntryRepository, JsonEntryRepository>();
+        var repository = new JsonEntryRepository(kotobanSettings);
+        builder.Services.AddSingleton<IEntryRepository>(repository);
+
         builder.Services.AddSingleton<OpenAiNetworkSettings>();
+
         // OpenAiTransportContext は「トランスポート層の責務」を分離するため個別クラス化しています。
         // 認証やエンドポイントなど「リクエストモデル」や「ネットワーク設定モデル」に収まらない情報をまとめる用途です。
         // このアプリではインスタンスが複数必要になる場面はないため、シングルトンで登録しています（シンプルさ優先）。
         builder.Services.AddSingleton<OpenAiTransportContext>();
+
+        builder.Services.AddSingleton<IPromptFormatProvider, PromptFormatProvider>();
+
         builder.Services.AddSingleton<OpenAiRequestFactory>();
+
         builder.Services.AddSingleton<OpenAiApiClient>();
+
         // AddHttpClient() は IHttpClientFactory をDIコンテナに登録し、HttpClientのライフサイクル管理や拡張機能を有効にします。
         builder.Services.AddHttpClient();
+
         builder.Services.AddSingleton<WebClient>();
-        builder.Services.AddSingleton<IImageManager, ImageManager>();
+
+        var imageManager = new ImageManager(kotobanSettings);
+        builder.Services.AddSingleton<IImageManager>(imageManager);
+
         builder.Services.AddSingleton<IAiContentService, OpenAiContentService>();
 
         // =============================================================================
@@ -119,10 +160,6 @@ public class Program
         //   - <T> には通常「現在のクラス名」を指定し、カテゴリごとにログを分けることで、運用・保守・分析がしやすくなる。
 
         var logger = host.Services.GetRequiredService<ILogger<Program>>();
-
-        // 起動時の情報の表示のために、インターフェースでなく実装の方を取得。
-        var repository = host.Services.GetRequiredService<JsonEntryRepository>();
-        var imageManager = host.Services.GetRequiredService<ImageManager>();
 
         try
         {
@@ -355,7 +392,7 @@ public class Program
             }
 
             // 仕上げ時には、たとえば更新後にもう一度読み返すなども有益なので、毎回表示。
-            PrintItemDetails(currentItem);
+            PrintItemDetails(currentItem, showTimestamps: false);
 
             Console.WriteLine();
             Console.WriteLine("=== 仕上げメニュー ===");
@@ -627,7 +664,7 @@ public class Program
         if (printItemDetails)
         {
             // ループで毎回表示するとうるさいので、最初に一度だけ表示。
-            PrintItemDetails(item);
+            PrintItemDetails(item, showTimestamps: false);
         }
 
         while (true)
@@ -996,21 +1033,7 @@ public class Program
         return string.IsNullOrWhiteSpace(input) ? defaultValue : input;
     }
 
-    private static Guid? ReadGuid(string prompt)
-    {
-        while (true)
-        {
-            var input = ReadString(prompt);
-            if (string.IsNullOrWhiteSpace(input)) return null;
-            if (Guid.TryParse(input, out var result))
-            {
-                return result;
-            }
-            Console.WriteLine("無効なGUID形式です。もう一度お試しください。");
-        }
-    }
-
-    private static void PrintItemDetails(Entry item)
+    private static void PrintItemDetails(Entry item, bool showTimestamps)
     {
         Console.WriteLine();
         Console.WriteLine("=== 項目の詳細 ===");
@@ -1022,20 +1045,23 @@ public class Program
         Console.WriteLine($"ユーザーメモ: {item.UserNote ?? "なし"}");
         Console.WriteLine($"ステータス: {item.Status}");
 
-        Console.WriteLine();
-        Console.WriteLine("=== タイムスタンプ ===");
-        Console.WriteLine($"作成日時: {DateTimeUtils.FormatForDisplay(item.CreatedAtUtc)}");
-        Console.WriteLine($"説明生成日時: {DateTimeUtils.FormatNullableForDisplay(item.ExplanationGeneratedAtUtc)}");
-        Console.WriteLine($"画像生成日時: {DateTimeUtils.FormatNullableForDisplay(item.ImageGeneratedAtUtc)}");
-        Console.WriteLine($"承認日時: {DateTimeUtils.FormatNullableForDisplay(item.ApprovedAtUtc)}");
+        if (showTimestamps)
+        {
+            Console.WriteLine();
+            Console.WriteLine("=== タイムスタンプ ===");
+            Console.WriteLine($"作成日時: {DateTimeUtils.FormatForDisplay(item.CreatedAtUtc)}");
+            Console.WriteLine($"説明生成日時: {DateTimeUtils.FormatNullableForDisplay(item.ExplanationGeneratedAtUtc)}");
+            Console.WriteLine($"画像生成日時: {DateTimeUtils.FormatNullableForDisplay(item.ImageGeneratedAtUtc)}");
+            Console.WriteLine($"承認日時: {DateTimeUtils.FormatNullableForDisplay(item.ApprovedAtUtc)}");
+        }
 
         Console.WriteLine();
         Console.WriteLine("=== 説明 ===");
         if (item.Explanations.Any())
         {
-            foreach (var (level, text) in item.Explanations)
+            foreach (var kvp in item.Explanations)
             {
-                Console.WriteLine($"{level}: {text}");
+                Console.WriteLine($"{kvp.Key}: {kvp.Value}");
             }
         }
         else
