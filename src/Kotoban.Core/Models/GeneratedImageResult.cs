@@ -8,9 +8,14 @@ namespace Kotoban.Core.Models
     public class GeneratedImageResult
     {
         /// <summary>
+        /// 画像生成時のコンテキスト（null の場合あり）。
+        /// </summary>
+        public string? Context { get; set; }
+
+        /// <summary>
         /// 画像のバイト配列。
         /// </summary>
-        public byte[] ImageBytes { get; set; } = Array.Empty<byte>();
+        public byte[] ImageBytes { get; set; } = [];
 
         /// <summary>
         /// 画像の拡張子（例: ".png"）。
