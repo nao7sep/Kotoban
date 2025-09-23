@@ -51,7 +51,15 @@ public class Program
         // コードの後半では Log.Error などを使っていて、たぶん動作は今と同じだったが、DI の徹底により派生開発耐性をつける今の手法とは違った。
 
         var serilogLogger = new LoggerConfiguration()
-            .MinimumLevel.Debug()
+#if DEBUG
+            // やりとりした JSON が LogTrace により出力される。
+            // Serilog には Verbose が、Microsoft の LogLevel には Trace がある。
+            // Trace and Verbose are already treated as synonyms とのこと。
+            // https://github.com/serilog/serilog-extensions-logging/issues/57
+            .MinimumLevel.Verbose()
+#else
+            .MinimumLevel.Information()
+#endif
             .WriteTo.Console(restrictedToMinimumLevel: LogEventLevel.Warning)
             .WriteTo.File(logFilePath)
             .CreateLogger();
