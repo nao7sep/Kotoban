@@ -67,7 +67,7 @@ public class OpenAiContentService : IAiContentService
     }
 
     /// <inheritdoc />
-    public async Task<(byte[] ImageBytes, string Extension, string? ImagePrompt)> GenerateImageAsync(Entry entry, string? newImageContext)
+    public async Task<GeneratedImageResult> GenerateImageAsync(Entry entry, string? newImageContext)
     {
         if (string.IsNullOrWhiteSpace(_settings.ImagePromptFormat))
         {
@@ -103,7 +103,12 @@ public class OpenAiContentService : IAiContentService
         // 決め打ちで PNG を返してくる AI をまずは想定。
         var extension = ".png";
 
-        return (imageBytes, extension, imagePrompt);
+        return new GeneratedImageResult
+        {
+            ImageBytes = imageBytes,
+            Extension = extension,
+            ImagePrompt = imagePrompt
+        };
     }
 
     private static Dictionary<ExplanationLevel, string>? ParseExplanations(string content)
