@@ -72,7 +72,7 @@ public class ImageManager : IImageManager
     /// <inheritdoc />
     public async Task<GeneratedImage> SaveGeneratedImageAsync(
         Entry entry,
-        byte[] imageData,
+        byte[] imageBytes,
         string extension,
         int attemptNumber,
         string? imageContext,
@@ -84,7 +84,7 @@ public class ImageManager : IImageManager
         var tempFileName = string.Format(_settings.TempImageFileNamePattern, entry.Id, attemptNumber, extension);
         var tempImagePath = Path.Combine(_tempImageDirectory, tempFileName);
 
-        await File.WriteAllBytesAsync(tempImagePath, imageData);
+        await File.WriteAllBytesAsync(tempImagePath, imageBytes);
 
         return new GeneratedImage
         {

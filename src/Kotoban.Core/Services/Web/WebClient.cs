@@ -22,6 +22,24 @@ public class WebClient
     }
 
     /// <summary>
+    /// 指定されたURLからデータをダウンロードし、指定したストリームに書き込みます。
+    /// </summary>
+    /// <param name="url">ダウンロードするファイルのURL。</param>
+    /// <param name="destinationStream">書き込み先のストリーム。</param>
+    /// <param name="cancellationToken">キャンセルトークン。</param>
+    /// <returns>非同期ダウンロード操作を表すタスク。</returns>
+    public async Task DownloadToStreamAsync(string url, Stream destinationStream, CancellationToken cancellationToken = default)
+    {
+        using var client = _httpClientFactory.CreateClient();
+        // ResponseHeadersRead: レスポンスヘッダー受信時点で処理を継続し、本文全体のダウンロードを待たずにストリームとして処理できるようにするオプション
+        using var response = await client.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        response.EnsureSuccessStatusCode();
+
+        await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+        await stream.CopyToAsync(destinationStream, cancellationToken);
+    }
+
+    /// <summary>
     /// 指定されたURLからファイルをダウンロードし、指定したパスに保存します。
     /// </summary>
     /// <param name="url">ダウンロードするファイルのURL。</param>
@@ -30,14 +48,8 @@ public class WebClient
     /// <returns>非同期ダウンロード操作を表すタスク。</returns>
     public async Task DownloadFileAsync(string url, string destinationPath, CancellationToken cancellationToken = default)
     {
-        using var client = _httpClientFactory.CreateClient();
-        // ResponseHeadersRead: レスポンスヘッダー受信時点で処理を継続し、本文全体のダウンロードを待たずにストリームとして処理できるようにするオプション
-        using var response = await client.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
-        response.EnsureSuccessStatusCode();
-
         DirectoryUtils.EnsureParentDirectoryExists(destinationPath);
-        await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
         await using var fileStream = new FileStream(destinationPath, FileMode.Create, FileAccess.Write, FileShare.None);
-        await stream.CopyToAsync(fileStream, cancellationToken);
+        await DownloadToStreamAsync(url, fileStream, cancellationToken);
     }
 }

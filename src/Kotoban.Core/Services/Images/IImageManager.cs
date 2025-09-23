@@ -20,7 +20,7 @@ public interface IImageManager
     /// 生成された画像を一時ディレクトリに保存します。
     /// </summary>
     /// <param name="entry">対象のエントリ</param>
-    /// <param name="imageData">画像データ</param>
+    /// <param name="imageBytes">画像データ</param>
     /// <param name="extension">ファイル拡張子</param>
     /// <param name="attemptNumber">試行回数</param>
     /// <param name="imageContext">画像生成用のコンテキスト</param>
@@ -29,7 +29,7 @@ public interface IImageManager
     /// <returns>保存された画像の情報</returns>
     Task<GeneratedImage> SaveGeneratedImageAsync(
         Entry entry,
-        byte[] imageData,
+        byte[] imageBytes,
         string extension,
         int attemptNumber,
         string? imageContext,
