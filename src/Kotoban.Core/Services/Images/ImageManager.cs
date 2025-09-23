@@ -102,7 +102,7 @@ public class ImageManager : IImageManager
         var tempImagePath = Path.Combine(_tempImageDirectory, selectedImage.RelativeImagePath);
         if (!File.Exists(tempImagePath))
         {
-            throw new FileNotFoundException($"Temporary image file not found: {tempImagePath}"););
+            throw new FileNotFoundException($"Temporary image file not found: {tempImagePath}");
         }
 
         Directory.CreateDirectory(_finalImageDirectory);
