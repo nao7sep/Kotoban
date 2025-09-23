@@ -145,6 +145,7 @@ public class Program
         // AddHttpClient() は IHttpClientFactory をDIコンテナに登録し、HttpClientのライフサイクル管理や拡張機能を有効にします。
         builder.Services.AddHttpClient();
         builder.Services.AddSingleton<OpenAiApiClient>();
+        builder.Services.AddSingleton<IAiContentService, OpenAiContentService>();
         builder.Services.AddSingleton<WebClient>();
 
         // =============================================================================
@@ -738,10 +739,82 @@ public class Program
 
     private static async Task GenerateOrUpdateAiContentAsync(Entry item, IServiceProvider services, AiContentAction action)
     {
+        var imageManager = services.GetRequiredService<IImageManager>();
+        var logger = services.GetRequiredService<ILogger<Program>>();
+
         Console.WriteLine();
-        var actionText = action == AiContentAction.Generate ? "生成" : "再生成";
-        Console.WriteLine($"AIコンテンツの{actionText}機能は現在実装されていません。");
-        await Task.CompletedTask;
+        Console.WriteLine("=== 既存のAIコンテンツ ===");
+        if (item.Explanations.Any())
+        {
+            Console.WriteLine("説明:");
+            foreach (var kvp in item.Explanations)
+            {
+                // ParseExplanations が生成した順に入っているので、今のところソートは不要。
+                // 辞書は、厳密には順序が不定のはずだが、実装上は追加順に保持される。
+                Console.WriteLine($"{kvp.Key}: {kvp.Value}");
+            }
+        }
+        else
+        {
+            Console.WriteLine("説明: なし");
+        }
+
+        try
+        {
+            var existingImage = await imageManager.StartImageEditingAsync(item);
+            if (existingImage != null)
+            {
+                Console.WriteLine($"画像: あり (一時ファイル: {existingImage.RelativeImagePath})");
+            }
+            else
+            {
+                Console.WriteLine("画像: なし");
+            }
+        }
+        catch (Exception ex)
+        {
+            // この周辺ではあまり try/catch をやらないが、
+            // StartImageEditingAsync はデータの不整合でも投げてくるので、続行のために例外をキャッチ。
+            // このメソッドがログだけ吐いて続行というのがデザイン上どうしても気に入らなかった。
+            // よって、ライブラリーを厳密に動かせ、アプリ側を「ログして進む」のゆるさに。
+            logger.LogError(ex, "Error while preparing existing image for editing.");
+        }
+
+        while (true)
+        {
+            Console.WriteLine();
+            Console.WriteLine("=== AIコンテンツ生成・更新 ===");
+
+            var menuOptions = new Dictionary<string, string>();
+            var menuIndex = 1;
+
+            menuOptions.Add(menuIndex++.ToString(), item.Explanations.Any() ? "説明を再生成する" : "説明を生成する");
+            menuOptions.Add(menuIndex++.ToString(), !string.IsNullOrWhiteSpace(item.RelativeImagePath) ? "画像を再生成する" : "画像を生成する");
+            menuOptions.Add(menuIndex++.ToString(), "戻る");
+
+            foreach (var kvp in menuOptions)
+            {
+                Console.WriteLine($"{kvp.Key}. {kvp.Value}");
+            }
+
+            var choice = ReadString("選択してください: ");
+
+            switch (choice)
+            {
+                case "1":
+                    await ManageExplanationsAsync(item, services);
+                    break;
+                case "2":
+                    await ManageImageAsync(item, services);
+                    break;
+                case "3":
+                    return;
+                default:
+                    Console.WriteLine("無効な選択です。");
+                    break;
+            }
+        }
+    }
     }
 
     private static async Task ApproveAiContentAsync(Entry item, IServiceProvider services)

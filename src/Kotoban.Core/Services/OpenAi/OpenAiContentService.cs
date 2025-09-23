@@ -81,6 +81,7 @@ public class OpenAiContentService : IAiContentService
         {
             _logger.LogTrace("OpenAI Trace > {Key}: {Value}", kvp.Key, kvp.Value);
         }
+
         var content = response.Choices?.FirstOrDefault()?.Message?.Content;
         if (string.IsNullOrWhiteSpace(content))
         {
@@ -119,16 +120,19 @@ public class OpenAiContentService : IAiContentService
         {
             _logger.LogTrace("OpenAI Trace > {Key}: {Value}", kvp.Key, kvp.Value);
         }
+
         var data = response.Data?.FirstOrDefault();
         if (data == null)
         {
             throw new OpenAiException("AI response data is empty.");
         }
+
         var url = data.Url;
         if (string.IsNullOrWhiteSpace(url))
         {
             throw new OpenAiException("AI response URL is empty.");
         }
+
         var imagePrompt = data.RevisedPrompt;
 
         using var stream = new MemoryStream();
@@ -165,6 +169,7 @@ public class OpenAiContentService : IAiContentService
                 dict[ExplanationLevel.Easy] = easy;
             }
         }
+
         if (root.TryGetProperty("moderate", out var moderateProp) && moderateProp.ValueKind == JsonValueKind.String)
         {
             var moderate = moderateProp.GetString();
@@ -173,6 +178,7 @@ public class OpenAiContentService : IAiContentService
                 dict[ExplanationLevel.Moderate] = moderate;
             }
         }
+
         if (root.TryGetProperty("advanced", out var advancedProp) && advancedProp.ValueKind == JsonValueKind.String)
         {
             var advanced = advancedProp.GetString();
