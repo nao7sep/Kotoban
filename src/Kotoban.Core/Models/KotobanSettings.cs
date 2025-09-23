@@ -1,4 +1,5 @@
 using System;
+using Kotoban.Core.Persistence;
 
 namespace Kotoban.Core.Models
 {
@@ -17,6 +18,11 @@ namespace Kotoban.Core.Models
         /// "%TEMP%"を指定するとユーザーのテンポラリフォルダに"Kotoban/Backups"が連結されたものが使われる。
         /// </summary>
         public string BackupDirectory { get; set; } = "%TEMP%";
+
+        /// <summary>
+        /// このリポジトリが使用するバックアップ戦略。
+        /// </summary>
+        public JsonRepositoryBackupMode BackupMode { get; set; } = JsonRepositoryBackupMode.CreateCopy;
 
         /// <summary>
         /// 保持するバックアップファイルの最大数。

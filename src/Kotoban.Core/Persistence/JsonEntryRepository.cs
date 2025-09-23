@@ -18,27 +18,36 @@ namespace Kotoban.Core.Persistence;
 /// </summary>
 public class JsonEntryRepository : IEntryRepository
 {
-    private readonly string _filePath;
-    private readonly JsonRepositoryBackupMode _backupMode;
-    private readonly string _backupDirectory;
+    private readonly KotobanSettings _settings;
+
+    /// <summary>
+    /// データが格納されているJSONファイルのパス。
+    /// </summary>
+    public string DataFile { get; }
+
+    /// <summary>
+    /// バックアップファイルを保存するディレクトリのパス。
+    /// </summary>
+    public string BackupDirectory { get; }
+
+    /// <summary>
+    /// このリポジトリが使用するバックアップ戦略。
+    /// </summary>
+    public JsonRepositoryBackupMode BackupMode { get; }
+
+    /// <summary>
+    /// 保持するバックアップファイルの最大数。
+    /// </summary>
+    public int MaxBackupFiles { get; }
+
     private List<Entry> _items = new();
-    private readonly JsonSerializerOptions _jsonOptions;
-    private readonly int _maxBackupFiles;
-
-    /// <summary>
-    /// JSONデータストアのファイルパスを取得します。
-    /// </summary>
-    public string DataFilePath => _filePath;
-
-    /// <summary>
-    /// このリポジトリが使用するバックアップ戦略を取得します。
-    /// </summary>
-    public JsonRepositoryBackupMode BackupMode => _backupMode;
 
     /// <summary>
     /// 現在メモリにロードされている項目の読み取り専用リストを取得します。
     /// </summary>
     public IReadOnlyList<Entry> Items => _items.AsReadOnly();
+
+    private readonly JsonSerializerOptions _jsonOptions;
 
     /// <summary>
     /// このリポジトリで使用されるJSONシリアライゼーション設定を取得します。
@@ -46,23 +55,41 @@ public class JsonEntryRepository : IEntryRepository
     public JsonSerializerOptions JsonOptions => _jsonOptions;
 
     /// <summary>
-    /// 保持するバックアップファイルの最大数を取得します。
-    /// </summary>
-    public int MaxBackupFiles => _maxBackupFiles;
-
-    /// <summary>
     /// JsonEntryRepositoryの新しいインスタンスを初期化します。
     /// </summary>
-    /// <param name="filePath">データが格納されているJSONファイルのパス。</param>
-    /// <param name="backupMode">このリポジトリが使用するバックアップ戦略。</param>
-    /// <param name="backupDirectory">バックアップファイルを保存するディレクトリのパス。</param>
-    /// <param name="maxBackupFiles">保持するバックアップファイルの最大数。</param>
-    public JsonEntryRepository(string filePath, JsonRepositoryBackupMode backupMode, string backupDirectory, int maxBackupFiles)
+    /// <param name="settings">Kotobanの設定</param>
+    /// <exception cref="InvalidOperationException">必須設定が不足している場合</exception>
+    public JsonEntryRepository(KotobanSettings settings)
     {
-        _filePath = filePath;
-        _backupMode = backupMode;
-        _backupDirectory = backupDirectory;
-        _maxBackupFiles = maxBackupFiles;
+        if (string.IsNullOrWhiteSpace(settings.JsonDataFile))
+        {
+            throw new InvalidOperationException("JsonDataFile is required.");
+        }
+        if (string.IsNullOrWhiteSpace(settings.BackupDirectory))
+        {
+            throw new InvalidOperationException("BackupDirectory is required.");
+        }
+
+        _settings = settings;
+
+        DataFile = _settings.JsonDataFile;
+        if (!Path.IsPathFullyQualified(DataFile))
+        {
+            DataFile = AppPath.GetAbsolutePath(DataFile);
+        }
+
+        BackupDirectory = _settings.BackupDirectory;
+        if (BackupDirectory.Equals("%TEMP%", StringComparison.OrdinalIgnoreCase))
+        {
+            BackupDirectory = Path.Combine(Path.GetTempPath(), "Kotoban", "Backups");
+        }
+        else if (!Path.IsPathFullyQualified(BackupDirectory))
+        {
+            BackupDirectory = AppPath.GetAbsolutePath(BackupDirectory);
+        }
+
+        BackupMode = _settings.BackupMode;
+        MaxBackupFiles = _settings.MaxBackupFiles;
 
         _jsonOptions = new JsonSerializerOptions
         {
@@ -84,13 +111,13 @@ public class JsonEntryRepository : IEntryRepository
     /// </summary>
     private void LoadData()
     {
-        if (!File.Exists(_filePath))
+        if (!File.Exists(DataFile))
         {
             _items = new List<Entry>();
             return;
         }
 
-        var json = File.ReadAllText(_filePath, Encoding.UTF8);
+        var json = File.ReadAllText(DataFile, Encoding.UTF8);
 
         // ファイルが空、空白、またはJSONリテラルの "null" の場合、
         // 新しい空のリストとして扱います。
@@ -120,23 +147,23 @@ public class JsonEntryRepository : IEntryRepository
         var exceptions = new List<Exception>();
 
         // バックアップ
-        if (_backupMode == JsonRepositoryBackupMode.CreateCopyInTemp)
+        if (BackupMode == JsonRepositoryBackupMode.CreateCopy)
         {
             try
             {
-                if (File.Exists(_filePath))
+                if (File.Exists(DataFile))
                 {
-                    Directory.CreateDirectory(_backupDirectory);
+                    Directory.CreateDirectory(BackupDirectory);
 
                     // 1秒に2回以上のバックアップが行われるケースを想定しにくいので、タイムスタンプの精度はこれで十分。
                     // 万が一にもそういうことがあったなら、差分がなく無意味なバックアップだろうし、上書き保存なのでたぶん落ちない。
                     var timestamp = DateTimeUtils.UtcNowTimestamp();
-                    var originalFileNameWithoutExtension = Path.GetFileNameWithoutExtension(_filePath);
+                    var originalFileNameWithoutExtension = Path.GetFileNameWithoutExtension(DataFile);
                     // バックアップディレクトリに保存するので、拡張子を .bak などにしない。
                     var backupFileName = $"{originalFileNameWithoutExtension}-{timestamp}.json";
-                    var backupPath = Path.Combine(_backupDirectory, backupFileName);
+                    var backupPath = Path.Combine(BackupDirectory, backupFileName);
 
-                    File.Copy(_filePath, backupPath, true);
+                    File.Copy(DataFile, backupPath, true);
                 }
             }
             catch (Exception ex)
@@ -151,8 +178,8 @@ public class JsonEntryRepository : IEntryRepository
             // ファイル内での一貫した順序を保証するためにリストをソートします
             _items = _items.OrderBy(e => e.CreatedAtUtc).ToList();
             var json = JsonSerializer.Serialize(_items, _jsonOptions);
-            DirectoryUtils.EnsureParentDirectoryExists(_filePath);
-            await File.WriteAllTextAsync(_filePath, json, Encoding.UTF8);
+            DirectoryUtils.EnsureParentDirectoryExists(DataFile);
+            await File.WriteAllTextAsync(DataFile, json, Encoding.UTF8);
         }
         catch (Exception ex)
         {
@@ -160,22 +187,22 @@ public class JsonEntryRepository : IEntryRepository
         }
 
         // クリーンアップ
-        if (_backupMode == JsonRepositoryBackupMode.CreateCopyInTemp)
+        if (BackupMode == JsonRepositoryBackupMode.CreateCopy)
         {
             try
             {
-                if (_maxBackupFiles > 0)
+                if (MaxBackupFiles > 0)
                 {
-                    Directory.CreateDirectory(_backupDirectory);
-                    var originalFileNameWithoutExtension = Path.GetFileNameWithoutExtension(_filePath);
-                    var backupFiles = Directory.GetFiles(_backupDirectory)
+                    Directory.CreateDirectory(BackupDirectory);
+                    var originalFileNameWithoutExtension = Path.GetFileNameWithoutExtension(DataFile);
+                    var backupFiles = Directory.GetFiles(BackupDirectory)
                         .Where(f => Path.GetFileName(f).StartsWith(originalFileNameWithoutExtension + "-") &&
                                     Path.GetExtension(f).Equals(".json", StringComparison.OrdinalIgnoreCase))
                         .ToArray();
 
-                    if (backupFiles.Length > _maxBackupFiles)
+                    if (backupFiles.Length > MaxBackupFiles)
                     {
-                        var filesToDelete = backupFiles.OrderBy(f => f, StringComparer.OrdinalIgnoreCase).Take(backupFiles.Length - _maxBackupFiles);
+                        var filesToDelete = backupFiles.OrderBy(f => f, StringComparer.OrdinalIgnoreCase).Take(backupFiles.Length - MaxBackupFiles);
                         foreach (var file in filesToDelete)
                         {
                             try
