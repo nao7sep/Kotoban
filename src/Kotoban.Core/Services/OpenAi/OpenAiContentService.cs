@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Kotoban.Core.Models;
 using Kotoban.Core.Services.Web;
+using Microsoft.Extensions.Logging;
 
 namespace Kotoban.Core.Services.OpenAi;
 
@@ -17,19 +19,22 @@ public class OpenAiContentService : IAiContentService
     private readonly OpenAiRequestFactory _openAiRequestFactory;
     private readonly OpenAiApiClient _openAiApiClient;
     private readonly WebClient _webClient;
+    private readonly ILogger<OpenAiContentService> _logger;
 
     public OpenAiContentService(
         KotobanSettings settings,
         OpenAiTransportContext transportContext,
         OpenAiRequestFactory openAiRequestFactory,
         OpenAiApiClient openAiApiClient,
-        WebClient webClient)
+        WebClient webClient,
+        ILogger<OpenAiContentService> logger)
     {
         _settings = settings;
         _transportContext = transportContext;
         _openAiRequestFactory = openAiRequestFactory;
         _openAiApiClient = openAiApiClient;
         _webClient = webClient;
+        _logger = logger;
     }
 
     /// <inheritdoc />
@@ -48,9 +53,34 @@ public class OpenAiContentService : IAiContentService
             newExplanationContext
         );
 
-        var request = _openAiRequestFactory.CreateSimpleChatRequest(prompt);
+        // Structured Outputs 用の response_format を匿名型でセット
+        var responseFormat = new
+        {
+            type = "json_schema",
+            json_schema = new
+            {
+                type = "object",
+                properties = new
+                {
+                    easy = new { type = "string" },
+                    moderate = new { type = "string" },
+                    advanced = new { type = "string" }
+                },
+                required = new[] { "easy", "moderate", "advanced" }
+            }
+        };
+        var additionalData = new Dictionary<string, object>
+        {
+            ["response_format"] = responseFormat
+        };
+
+        var request = _openAiRequestFactory.CreateSimpleChatRequest(prompt, additionalData: additionalData);
         var tracer = new OpenAiTraceDictionary();
         var response = await _openAiApiClient.GetChatResponseAsync(_transportContext, request, tracer);
+        foreach (var kvp in tracer)
+        {
+            _logger.LogTrace("OpenAI Trace > {Key}: {Value}", kvp.Key, kvp.Value);
+        }
         var content = response.Choices?.FirstOrDefault()?.Message?.Content;
         if (string.IsNullOrWhiteSpace(content))
         {
@@ -58,7 +88,7 @@ public class OpenAiContentService : IAiContentService
         }
 
         var newExplanations = ParseExplanations(content);
-        if (newExplanations == null || !newExplanations.Any())
+        if (newExplanations.Count != 3)
         {
             throw new OpenAiException("Failed to parse explanations from AI response.");
         }
@@ -85,6 +115,10 @@ public class OpenAiContentService : IAiContentService
         var request = _openAiRequestFactory.CreateImageRequest(prompt);
         var tracer = new OpenAiTraceDictionary();
         var response = await _openAiApiClient.GenerateImageAsync(_transportContext, request, tracer);
+        foreach (var kvp in tracer)
+        {
+            _logger.LogTrace("OpenAI Trace > {Key}: {Value}", kvp.Key, kvp.Value);
+        }
         var data = response.Data?.FirstOrDefault();
         if (data == null)
         {
@@ -111,9 +145,43 @@ public class OpenAiContentService : IAiContentService
         };
     }
 
-    private static Dictionary<ExplanationLevel, string>? ParseExplanations(string content)
+    /// <summary>
+    /// OpenAIから返されたJSON文字列をパースし、ExplanationLevelごとの解説文辞書に変換します。
+    /// </summary>
+    /// <param name="content">AIレスポンスのJSON文字列</param>
+    /// <returns>ExplanationLevelごとの解説文辞書</returns>
+    private static Dictionary<ExplanationLevel, string> ParseExplanations(string content)
     {
-        // TODO: あとで JSON モードで実装。
-        return null;
+        // 期待するJSON: { "easy": "...", "moderate": "...", "advanced": "..." }
+        using var doc = JsonDocument.Parse(content);
+        var root = doc.RootElement;
+        var dict = new Dictionary<ExplanationLevel, string>();
+
+        if (root.TryGetProperty("easy", out var easyProp) && easyProp.ValueKind == JsonValueKind.String)
+        {
+            var easy = easyProp.GetString();
+            if (!string.IsNullOrWhiteSpace(easy))
+            {
+                dict[ExplanationLevel.Easy] = easy;
+            }
+        }
+        if (root.TryGetProperty("moderate", out var moderateProp) && moderateProp.ValueKind == JsonValueKind.String)
+        {
+            var moderate = moderateProp.GetString();
+            if (!string.IsNullOrWhiteSpace(moderate))
+            {
+                dict[ExplanationLevel.Moderate] = moderate;
+            }
+        }
+        if (root.TryGetProperty("advanced", out var advancedProp) && advancedProp.ValueKind == JsonValueKind.String)
+        {
+            var advanced = advancedProp.GetString();
+            if (!string.IsNullOrWhiteSpace(advanced))
+            {
+                dict[ExplanationLevel.Advanced] = advanced;
+            }
+        }
+
+        return dict;
     }
 }
