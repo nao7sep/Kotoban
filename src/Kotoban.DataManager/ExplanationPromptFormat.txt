@@ -1,1 +1,11 @@
-﻿
+﻿[Reading]
+{0}
+
+[Expression]
+{1}
+
+[GeneralContext]
+{2}
+
+[ExplanationContext]
+{3}

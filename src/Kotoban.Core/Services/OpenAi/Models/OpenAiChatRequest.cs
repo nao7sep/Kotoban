@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Text.Json.Serialization;
 
 namespace Kotoban.Core.Services.OpenAi.Models;
 
@@ -16,11 +17,13 @@ public class OpenAiChatRequest : OpenAiApiObjectBase
     /// <summary>
     /// 使用するモデル名。
     /// </summary>
+    [JsonPropertyName("model")]
     public string Model { get; set; } = string.Empty;
 
     /// <summary>
     /// メッセージのリスト。
     /// </summary>
+    [JsonPropertyName("messages")]
     public List<OpenAiChatMessage> Messages { get; set; } = new();
 }
 
@@ -32,10 +35,12 @@ public class OpenAiChatMessage : OpenAiApiObjectBase
     /// <summary>
     /// メッセージの役割（system, user, assistant など）。
     /// </summary>
+    [JsonPropertyName("role")]
     public string Role { get; set; } = string.Empty;
 
     /// <summary>
     /// メッセージ本文。
     /// </summary>
+    [JsonPropertyName("content")]
     public string Content { get; set; } = string.Empty;
 }

@@ -92,8 +92,15 @@ public class JsonEntryRepository : IEntryRepository
 
         _jsonOptions = new JsonSerializerOptions
         {
-            WriteIndented = true,
+            // 誰にも送信しないデータなので、データ量の節約だったり、
+            // null にしてデフォルト値にフォールバックさせたりは、ここでは不要。
+            // DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+
+            // こうしておかないと、ローカルで差分を取るのが絶望的に。
             Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+
+            // 同じく差分の取りやすさのため。
+            WriteIndented = true
         };
 
         // ここで JsonStringEnumConverter を追加するのは、2つの理由からです。

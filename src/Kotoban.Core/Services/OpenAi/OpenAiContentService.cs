@@ -63,19 +63,32 @@ public class OpenAiContentService : IAiContentService
         await _actionDispatcher.InvokeAsync("trace", "prompt", prompt);
 
         // Structured Outputs 用の response_format を匿名型でセット
+        // 次のページで Manual schema をクリックし、Step 2: Supply your schema in the API call を開いたところの例が分かりやすい。
+        // https://platform.openai.com/docs/guides/structured-outputs?example=structured-data
         var responseFormat = new
         {
             type = "json_schema",
             json_schema = new
             {
-                type = "object",
-                properties = new
+                name = "explanations",
+                strict = true,
+                schema = new
                 {
-                    easy = new { type = "string" },
-                    moderate = new { type = "string" },
-                    advanced = new { type = "string" }
-                },
-                required = new[] { "easy", "moderate", "advanced" }
+                    type = "object",
+                    properties = new
+                    {
+                        easy = new { type = "string" },
+                        moderate = new { type = "string" },
+                        advanced = new { type = "string" }
+                    },
+                    required = new[] { "easy", "moderate", "advanced" },
+                    // 久～しぶりに、小一時間、コーディングにつまった。
+                    // これを送っていたのに、API から「additionalProperties がない」というエラーメッセージをもらった。
+                    // これだけが _ により snake_case になってい「ない」ことになかなか気づけなかった。
+                    // 解決策として、PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower の指定をやめて、
+                    // OpenAI の API と関わりのある全てのドメインモデルに JsonPropertyName 属性をつけた。
+                    additionalProperties = false
+                }
             }
         };
         var additionalData = new Dictionary<string, object>
