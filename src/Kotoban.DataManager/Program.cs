@@ -38,7 +38,11 @@ public class Program
     public static async Task Main(string[] args)
     {
         var builder = Host.CreateApplicationBuilder(args);
-
+#if DEBUG
+        // 型 Program は、.csproj ファイルを特定し、UserSecretsId を探すことに使われる。
+        // 同じアセンブリーに含まれる型ならなんでもよいとのこと。
+        builder.Configuration.AddUserSecrets<Program>();
+#endif
         // =============================================================================
 
         // Serilogの手動セットアップ（ファイルロギング用）
