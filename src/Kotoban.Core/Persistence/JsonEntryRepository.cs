@@ -8,7 +8,6 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using Kotoban.Core.Models;
-using Kotoban.Core.Persistence.Json;
 using Kotoban.Core.Utils;
 
 namespace Kotoban.Core.Persistence;

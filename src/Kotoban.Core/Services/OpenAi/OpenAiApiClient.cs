@@ -4,7 +4,6 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using Kotoban.Core.Services.OpenAi.Json;
 using Kotoban.Core.Services.OpenAi.Models;
 
 namespace Kotoban.Core.Services.OpenAi;
@@ -33,14 +32,14 @@ public class OpenAiApiClient
     /// </summary>
     /// <param name="transport">リクエストごとの OpenAI API 認証・エンドポイント情報</param>
     /// <param name="request">リクエストモデル</param>
-    /// <param name="trace">トレース用ディクショナリ</param>
+    /// <param name="dispatcher">アクションディスパッチャー（トレース用）</param>
     /// <param name="cancellationToken">キャンセルトークン（省略時はデフォルトタイムアウト）</param>
     /// <returns>レスポンスモデル</returns>
     /// <exception cref="Exception">API 通信エラー時</exception>
     public async Task<OpenAiChatResponse> GetChatResponseAsync(
         OpenAiTransportContext transport,
         OpenAiChatRequest request,
-        OpenAiTraceDictionary trace,
+        ActionDispatcher dispatcher,
         CancellationToken? cancellationToken = null)
     {
         using var client = _httpClientFactory.CreateClient();
@@ -51,7 +50,7 @@ public class OpenAiApiClient
         requestOptions.Converters.Add(new OpenAiChatRequestConverter());
         var json = JsonSerializer.Serialize(request, requestOptions);
 
-        trace.SetString("request", json);
+        await dispatcher.InvokeAsync("trace", "request", json);
 
         using var message = new HttpRequestMessage(HttpMethod.Post, url);
         message.Content = new StringContent(json, Encoding.UTF8, "application/json");
@@ -72,11 +71,11 @@ public class OpenAiApiClient
 
         using HttpResponseMessage response = await client.SendAsync(message, token);
         var responseBody = await response.Content.ReadAsStringAsync(token);
-        trace.SetString("response", responseBody);
+        await dispatcher.InvokeAsync("trace", "response", responseBody);
 
         if (!response.IsSuccessStatusCode)
         {
-            HandleErrorResponse(response, responseBody, trace);
+            await HandleErrorResponse(response, responseBody, dispatcher);
         }
 
         var result = JsonSerializer.Deserialize<OpenAiChatResponse>(responseBody, OpenAiApiJsonOptions.BaseResponseDeserializationOptions);
@@ -92,14 +91,14 @@ public class OpenAiApiClient
     /// </summary>
     /// <param name="transport">リクエストごとの OpenAI API 認証・エンドポイント情報</param>
     /// <param name="request">リクエストモデル</param>
-    /// <param name="trace">トレース用ディクショナリ</param>
+    /// <param name="dispatcher">アクションディスパッチャー（トレース用）</param>
     /// <param name="cancellationToken">キャンセルトークン（省略時はデフォルトタイムアウト）</param>
     /// <returns>レスポンスモデル</returns>
     /// <exception cref="Exception">API 通信エラー時</exception>
     public async Task<OpenAiImageResponse> GenerateImageAsync(
         OpenAiTransportContext transport,
         OpenAiImageRequest request,
-        OpenAiTraceDictionary trace,
+        ActionDispatcher dispatcher,
         CancellationToken? cancellationToken = null)
     {
         using var client = _httpClientFactory.CreateClient();
@@ -108,7 +107,7 @@ public class OpenAiApiClient
         var requestOptions = new JsonSerializerOptions(OpenAiApiJsonOptions.BaseRequestSerializationOptions);
         requestOptions.Converters.Add(new OpenAiImageRequestConverter());
         var json = JsonSerializer.Serialize(request, requestOptions);
-        trace.SetString("request", json);
+        await dispatcher.InvokeAsync("trace", "request", json);
 
         using var message = new HttpRequestMessage(HttpMethod.Post, url);
         message.Content = new StringContent(json, Encoding.UTF8, "application/json");
@@ -127,11 +126,11 @@ public class OpenAiApiClient
 
         using HttpResponseMessage response = await client.SendAsync(message, token);
         var responseBody = await response.Content.ReadAsStringAsync(token);
-        trace.SetString("response", responseBody);
+        await dispatcher.InvokeAsync("trace", "response", responseBody);
 
         if (!response.IsSuccessStatusCode)
         {
-            HandleErrorResponse(response, responseBody, trace);
+            await HandleErrorResponse(response, responseBody, dispatcher);
         }
 
         var result = JsonSerializer.Deserialize<OpenAiImageResponse>(responseBody, OpenAiApiJsonOptions.BaseResponseDeserializationOptions);
@@ -147,11 +146,11 @@ public class OpenAiApiClient
     /// </summary>
     /// <param name="response">HTTP レスポンス</param>
     /// <param name="responseBody">レスポンス本文</param>
-    /// <param name="trace">トレース用ディクショナリ</param>
+    /// <param name="dispatcher">アクションディスパッチャー（トレース用）</param>
     /// <exception cref="OpenAiException">常に投げられる例外</exception>
-    private static void HandleErrorResponse(HttpResponseMessage response, string responseBody, OpenAiTraceDictionary trace)
+    private static async Task HandleErrorResponse(HttpResponseMessage response, string responseBody, ActionDispatcher dispatcher)
     {
-        trace.SetString("error", responseBody);
+        await dispatcher.InvokeAsync("trace", "error", responseBody);
         OpenAiErrorResponse? error = null;
         try
         {

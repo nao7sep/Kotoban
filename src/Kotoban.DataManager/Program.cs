@@ -7,10 +7,8 @@ using System.Reflection;
 using System.Threading.Tasks;
 using Kotoban.Core.Models;
 using Kotoban.Core.Persistence;
-using Kotoban.Core.Services.Images;
+using Kotoban.Core.Services;
 using Kotoban.Core.Services.OpenAi;
-using Kotoban.Core.Services.Prompt;
-using Kotoban.Core.Services.Web;
 using Kotoban.Core.Utils;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -136,6 +134,11 @@ public class Program
 
         builder.Services.AddSingleton<IAiContentService, OpenAiContentService>();
 
+        // ここで ActionDispatcher のインスタンスをつくり、action を登録し、AddSingleton することも可能だが、
+        // ILogger でも serilogLogger でもなく ILogger<ActionDispatcher> を使いたいので、RunApplicationLoop 内で。
+        // スコープを合わせたく、scopedServices を使いたいというのもある。
+        builder.Services.AddSingleton<ActionDispatcher>();
+
         // =============================================================================
 
         // サービス登録が終われば、ビルドしてホストを取る。
@@ -241,6 +244,54 @@ public class Program
         using var scope = services.CreateScope();
         var scopedServices = scope.ServiceProvider;
         var logger = scopedServices.GetRequiredService<ILogger<Program>>();
+
+        // Build 後に ILogger<ActionDispatcher> を使いたいので、サービス登録のところでなく、ここで action を登録。
+        var actionDispatcher = scopedServices.GetRequiredService<ActionDispatcher>();
+        var actionLogger = scopedServices.GetRequiredService<ILogger<ActionDispatcher>>();
+        actionDispatcher.Register("trace", parameters =>
+        {
+            // トレースは、パラメーターの書き方次第であり、そこにミスがなければランタイムで突然落ちることはない。
+            // よって、parameters を厳しめに見ておく。
+
+            if (parameters == null)
+            {
+                throw new ArgumentNullException(nameof(parameters), "Parameters cannot be null.");
+            }
+
+            if (parameters.Length < 1)
+            {
+                throw new ArgumentException("Key must be provided as the first parameter.", nameof(parameters));
+            }
+
+            object? keyObj = parameters[0];
+            if (keyObj == null)
+            {
+                throw new ArgumentNullException("Key cannot be null.", nameof(parameters));
+            }
+            if (keyObj is not string key)
+            {
+                throw new ArgumentException("Key must be a string.", nameof(parameters));
+            }
+
+            if (parameters.Length < 2)
+            {
+                throw new ArgumentException("Value must be provided as the second parameter.", nameof(parameters));
+            }
+
+            object? valueObj = parameters[1];
+            if (valueObj == null)
+            {
+                actionLogger.LogTrace("{Key}: {Value}", key, null);
+                return Task.CompletedTask;
+            }
+            if (valueObj is not string value)
+            {
+                throw new ArgumentException("Value must be a string or null.", nameof(parameters));
+            }
+
+            actionLogger.LogTrace("{Key}: {Value}", key, value);
+            return Task.CompletedTask;
+        });
 
         while (true)
         {

@@ -4,8 +4,6 @@ using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Kotoban.Core.Models;
-using Kotoban.Core.Services.Prompt;
-using Kotoban.Core.Services.Web;
 using Kotoban.Core.Utils;
 using Microsoft.Extensions.Logging;
 
@@ -21,7 +19,7 @@ public class OpenAiContentService : IAiContentService
     private readonly OpenAiRequestFactory _openAiRequestFactory;
     private readonly OpenAiApiClient _openAiApiClient;
     private readonly WebClient _webClient;
-    private readonly ILogger<OpenAiContentService> _logger;
+    private readonly ActionDispatcher _actionDispatcher;
 
     /// <summary>
     /// コンストラクタ。依存サービスを注入する。
@@ -31,21 +29,21 @@ public class OpenAiContentService : IAiContentService
     /// <param name="openAiRequestFactory">OpenAIリクエストファクトリ</param>
     /// <param name="openAiApiClient">OpenAI APIクライアント</param>
     /// <param name="webClient">Webクライアント</param>
-    /// <param name="logger">ロガー</param>
+    /// <param name="actionDispatcher">アクションディスパッチャー（トレース用）</param>
     public OpenAiContentService(
         IPromptFormatProvider promptFormatProvider,
         OpenAiTransportContext transportContext,
         OpenAiRequestFactory openAiRequestFactory,
         OpenAiApiClient openAiApiClient,
         WebClient webClient,
-        ILogger<OpenAiContentService> logger)
+        ActionDispatcher actionDispatcher)
     {
         _promptFormatProvider = promptFormatProvider;
         _transportContext = transportContext;
         _openAiRequestFactory = openAiRequestFactory;
         _openAiApiClient = openAiApiClient;
         _webClient = webClient;
-        _logger = logger;
+        _actionDispatcher = actionDispatcher;
     }
 
     /// <inheritdoc />
@@ -62,7 +60,7 @@ public class OpenAiContentService : IAiContentService
             newExplanationContext
         );
 
-        _logger.LogTrace("Explanation prompt: {Prompt}", prompt);
+        await _actionDispatcher.InvokeAsync("trace", "prompt", prompt);
 
         // Structured Outputs 用の response_format を匿名型でセット
         var responseFormat = new
@@ -86,12 +84,7 @@ public class OpenAiContentService : IAiContentService
         };
 
         var request = _openAiRequestFactory.CreateSimpleChatRequest(prompt, additionalData: additionalData);
-        var tracer = new OpenAiTraceDictionary();
-        var response = await _openAiApiClient.GetChatResponseAsync(_transportContext, request, tracer);
-        foreach (var kvp in tracer)
-        {
-            _logger.LogTrace("OpenAI Trace > {Key}: {Value}", kvp.Key, kvp.Value);
-        }
+        var response = await _openAiApiClient.GetChatResponseAsync(_transportContext, request, _actionDispatcher);
 
         var content = response.Choices?.FirstOrDefault()?.Message?.Content;
         if (string.IsNullOrWhiteSpace(content))
@@ -126,15 +119,10 @@ public class OpenAiContentService : IAiContentService
             newImageContext
         );
 
-        _logger.LogTrace("Image prompt: {Prompt}", prompt);
+        await _actionDispatcher.InvokeAsync("trace", "prompt", prompt);
 
         var request = _openAiRequestFactory.CreateImageRequest(prompt);
-        var tracer = new OpenAiTraceDictionary();
-        var response = await _openAiApiClient.GenerateImageAsync(_transportContext, request, tracer);
-        foreach (var kvp in tracer)
-        {
-            _logger.LogTrace("OpenAI Trace > {Key}: {Value}", kvp.Key, kvp.Value);
-        }
+        var response = await _openAiApiClient.GenerateImageAsync(_transportContext, request, _actionDispatcher);
 
         var data = response.Data?.FirstOrDefault();
         if (data == null)
