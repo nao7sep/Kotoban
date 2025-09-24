@@ -47,6 +47,6 @@ public interface IImageManager
     /// <summary>
     /// 一時画像ファイルをクリーンアップします。
     /// </summary>
-    /// <param name="entryId">対象のエントリID。nullの場合は全ての一時画像を削除</param>
+    /// <param name="entryId">対象のエントリID。nullの場合は、ファイル名がGUIDで始まるすべてのファイルを削除</param>
     Task CleanupTempImagesAsync(Guid? entryId);
 }

@@ -187,6 +187,21 @@ public class ImageManager : IImageManager
             var entryIdString = entryId.Value.ToString();
             files = files.Where(f => Path.GetFileName(f).StartsWith(entryIdString, StringComparison.OrdinalIgnoreCase)).ToArray();
         }
+        else
+        {
+            // entryId が null の場合、ファイル名の先頭36文字が GUID としてパースできるものだけ削除対象にする
+            // 例: "123e4567-e89b-12d3-a456-426614174000-0.png"
+            // GUID の "D" フォーマットはハイフンを含む36文字: 8-4-4-4-12
+            files = files.Where(f =>
+            {
+                var fileNameWithoutExtension = Path.GetFileNameWithoutExtension(f);
+                if (fileNameWithoutExtension.Length < 36)
+                    return false;
+
+                var guidSpan = fileNameWithoutExtension.AsSpan(0, 36);
+                return Guid.TryParseExact(guidSpan, "D", out _);
+            }).ToArray();
+        }
 
         foreach (var file in files)
         {
