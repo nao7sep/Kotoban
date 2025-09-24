@@ -1,4 +1,4 @@
-﻿namespace Kotoban.Core.Services.Prompt
+﻿namespace Kotoban.Core.Services
 {
     /// <summary>
     /// プロンプトフォーマットを取得するためのインターフェース。

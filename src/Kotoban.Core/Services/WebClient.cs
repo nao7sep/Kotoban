@@ -3,7 +3,7 @@ using System.Net.Http;
 using System.Threading.Tasks;
 using Kotoban.Core.Utils;
 
-namespace Kotoban.Core.Services.Web;
+namespace Kotoban.Core.Services;
 
 /// <summary>
 /// ファイルのダウンロードなど、Web関連の操作を行うユーティリティメソッドを提供します。

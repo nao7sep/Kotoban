@@ -3,7 +3,7 @@ using Kotoban.Core.Utils;
 using System.IO;
 using System.Text;
 
-namespace Kotoban.Core.Services.Prompt
+namespace Kotoban.Core.Services
 {
     /// <summary>
     /// ファイルからプロンプトフォーマットを読み込むサービス。

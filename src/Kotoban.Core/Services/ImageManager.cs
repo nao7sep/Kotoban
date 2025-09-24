@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 using Kotoban.Core.Models;
 using Kotoban.Core.Utils;
 
-namespace Kotoban.Core.Services.Images;
+namespace Kotoban.Core.Services;
 
 /// <summary>
 /// 画像ファイルの管理とワークフローを提供するサービスの実装。

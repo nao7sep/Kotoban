@@ -5,7 +5,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Kotoban.Core.Utils;
 
-namespace Kotoban.Core.Persistence.Json;
+namespace Kotoban.Core.Persistence;
 
 /// <summary>
 /// 文字列のシリアライズとデシリアライズを、複数行文字列の特別な処理を含めて扱います。

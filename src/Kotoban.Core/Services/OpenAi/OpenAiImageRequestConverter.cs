@@ -3,7 +3,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Kotoban.Core.Services.OpenAi.Models;
 
-namespace Kotoban.Core.Services.OpenAi.Json;
+namespace Kotoban.Core.Services.OpenAi;
 
 /// <summary>
 /// OpenAiImageRequest の AdditionalData をフラット化するためのカスタム JsonConverter です。
