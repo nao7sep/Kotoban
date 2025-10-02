@@ -1127,7 +1127,7 @@ public class Program
 
         Console.WriteLine();
         Console.WriteLine("=== 画像 ===");
-        Console.WriteLine($"画像ファイルパス: {item.ImageFileName ?? "なし"}");
+        Console.WriteLine($"画像ファイル名: {item.ImageFileName ?? "なし"}");
         Console.WriteLine($"画像プロンプト: {item.ImagePrompt ?? "なし"}");
     }
 
