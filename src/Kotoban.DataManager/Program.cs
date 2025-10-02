@@ -253,7 +253,9 @@ public class Program
         // Build 後に ILogger<ActionDispatcher> を使いたいので、サービス登録のところでなく、ここで action を登録。
         var actionDispatcher = scopedServices.GetRequiredService<ActionDispatcher>();
         var actionLogger = scopedServices.GetRequiredService<ILogger<ActionDispatcher>>();
+#pragma warning disable CS1998 // この非同期メソッドには 'await' 演算子がないため、同期的に実行されます
         actionDispatcher.Register("trace", async parameters =>
+#pragma warning restore CS1998
         {
             // トレースは、パラメーターの書き方次第であり、そこにミスがなければランタイムで突然落ちることはない。
             // よって、parameters を厳しめに見ておく。

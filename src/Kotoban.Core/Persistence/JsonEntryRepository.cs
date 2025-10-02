@@ -148,6 +148,7 @@ public class JsonEntryRepository : IEntryRepository
 
     /// <summary>
     /// メモリ内のデータをソートしてファイルに非同期で保存します。
+    /// アトミックな保存操作のため、一時ファイルを使用します。
     /// </summary>
     private async Task SaveDataAsync()
     {
@@ -179,14 +180,47 @@ public class JsonEntryRepository : IEntryRepository
             }
         }
 
-        // 保存
+        // アトミックな保存操作：一時ファイルに書き込み、成功したら元ファイルと置き換える
         try
         {
             // ファイル内での一貫した順序を保証するためにリストをソートします
             _items = _items.OrderBy(e => e.CreatedAtUtc).ToList();
             var json = JsonSerializer.Serialize(_items, _jsonOptions);
+
+            // 元ファイルと同じディレクトリに一時ファイルを作成
             DirectoryUtils.EnsureParentDirectoryExists(DataFile);
-            await File.WriteAllTextAsync(DataFile, json, Encoding.UTF8);
+            var tempFile = DataFile + ".tmp";
+
+            try
+            {
+                // 一時ファイルにデータを書き込み
+                await File.WriteAllTextAsync(tempFile, json, Encoding.UTF8);
+
+                // 書き込みが成功したら、元ファイルを削除して一時ファイルをリネーム
+                // これによりアトミックな置き換えを実現
+                if (File.Exists(DataFile))
+                {
+                    File.Delete(DataFile);
+                }
+                File.Move(tempFile, DataFile);
+            }
+            catch
+            {
+                // 一時ファイルの書き込みまたは置き換えに失敗した場合、
+                // 一時ファイルが残っていれば削除する
+                if (File.Exists(tempFile))
+                {
+                    try
+                    {
+                        File.Delete(tempFile);
+                    }
+                    catch
+                    {
+                        // 一時ファイルの削除に失敗しても、元の例外を優先する
+                    }
+                }
+                throw; // 元の例外を再スロー
+            }
         }
         catch (Exception ex)
         {

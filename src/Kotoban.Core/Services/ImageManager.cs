@@ -167,7 +167,10 @@ public class ImageManager : IImageManager
     }
 
     /// <inheritdoc />
+    /// <inheritdoc />
+#pragma warning disable CS1998 // この非同期メソッドには 'await' 演算子がないため、同期的に実行されます
     public async Task CleanupTempImagesAsync(Guid? entryId)
+#pragma warning restore CS1998
     {
         if (!Directory.Exists(TempImageDirectory))
         {
