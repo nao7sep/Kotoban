@@ -152,10 +152,12 @@ public class OpenAiContentService : IAiContentService
         var imagePrompt = data.RevisedPrompt;
 
         using var stream = new MemoryStream();
-        await _webClient.DownloadToStreamAsync(url, stream);
+        var headers = await _webClient.DownloadToStreamAsync(url, stream);
         var imageBytes = stream.ToArray();
-        // 決め打ちで PNG を返してくる AI をまずは想定。
-        var extension = ".png";
+        headers.TryGetValue("Content-Type", out var contentTypeValues);
+        var contentType = contentTypeValues?.FirstOrDefault();
+        // 判別できなければ、.png にフォールバックする。
+        var extension = WebUtils.GetImageFileExtensionFromContentType(contentType);
 
         return new GeneratedImageResult
         {
