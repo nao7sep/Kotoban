@@ -160,6 +160,7 @@ public class ImageManager : IImageManager
         var finalFileName = string.Format(_settings.FinalImageFileNamePattern, entry.Id, extension);
         var finalImagePath = Path.Combine(FinalImageDirectory, finalFileName);
 
+        // ドライブをまたぐなどしなければ一瞬で終わるだろうから、非同期化は不要。
         File.Move(tempImagePath, finalImagePath, overwrite: true);
 
         return Task.FromResult(finalFileName);

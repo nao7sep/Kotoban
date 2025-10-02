@@ -113,6 +113,7 @@ public class Program
         builder.Services.AddSingleton(openAiSettings);
 
         var repository = new JsonEntryRepository(kotobanSettings);
+        await repository.LoadDataAsync();
         builder.Services.AddSingleton<IEntryRepository>(repository);
 
         builder.Services.AddSingleton<OpenAiNetworkSettings>();

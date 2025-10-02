@@ -109,13 +109,14 @@ public class JsonEntryRepository : IEntryRepository
         _jsonOptions.Converters.Add(new JsonStringEnumConverter());
         _jsonOptions.Converters.Add(new MultilineStringConverter());
 
-        LoadData();
+        // コンストラクターを async にできないので、今後は外側でこれを呼び出す。
+        // LoadDataAsync();
     }
 
     /// <summary>
     /// ファイルからデータをロードし、作成日時でソートします。
     /// </summary>
-    private void LoadData()
+    public async Task LoadDataAsync()
     {
         if (!File.Exists(DataFile))
         {
@@ -123,7 +124,7 @@ public class JsonEntryRepository : IEntryRepository
             return;
         }
 
-        var json = File.ReadAllText(DataFile, Encoding.UTF8);
+        var json = await File.ReadAllTextAsync(DataFile, Encoding.UTF8);
 
         // ファイルが空、空白、またはJSONリテラルの "null" の場合、
         // 新しい空のリストとして扱います。

@@ -57,20 +57,20 @@ namespace Kotoban.Core.Services
         /// 説明文生成用プロンプトフォーマットをファイルから取得する。
         /// </summary>
         /// <returns>説明文生成用プロンプトフォーマットの文字列。</returns>
-        public string GetExplanationPromptFormat()
+        public async Task<string> GetExplanationPromptFormatAsync()
         {
             // キャッシュも考えたが、ワークフロー的には、プログラム実行中のプロンプト更新をできた方が圧倒的に便利。
-            return File.ReadAllText(ExplanationPromptFormatFile, Encoding.UTF8);
+            return await File.ReadAllTextAsync(ExplanationPromptFormatFile, Encoding.UTF8);
         }
 
         /// <summary>
         /// 画像生成用プロンプトフォーマットをファイルから取得する。
         /// </summary>
         /// <returns>画像生成用プロンプトフォーマットの文字列。</returns>
-        public string GetImagePromptFormat()
+        public async Task<string> GetImagePromptFormatAsync()
         {
             // キャッシュも考えたが、ワークフロー的には、プログラム実行中のプロンプト更新をできた方が圧倒的に便利。
-            return File.ReadAllText(ImagePromptFormatFile, Encoding.UTF8);
+            return await File.ReadAllTextAsync(ImagePromptFormatFile, Encoding.UTF8);
         }
     }
 }

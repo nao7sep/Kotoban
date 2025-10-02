@@ -50,7 +50,7 @@ public class OpenAiContentService : IAiContentService
     public async Task<GeneratedExplanationResult> GenerateExplanationsAsync(Entry entry, string? newExplanationContext)
     {
         // プロンプトフォーマットをプロバイダーから取得
-        var promptFormat = _promptFormatProvider.GetExplanationPromptFormat();
+        var promptFormat = await _promptFormatProvider.GetExplanationPromptFormatAsync();
 
         var prompt = string.Format(
             promptFormat,
@@ -122,7 +122,7 @@ public class OpenAiContentService : IAiContentService
     public async Task<GeneratedImageResult> GenerateImageAsync(Entry entry, string? newImageContext)
     {
         // プロンプトフォーマットをプロバイダーから取得
-        var promptFormat = _promptFormatProvider.GetImagePromptFormat();
+        var promptFormat = await _promptFormatProvider.GetImagePromptFormatAsync();
 
         var prompt = string.Format(
             promptFormat,
