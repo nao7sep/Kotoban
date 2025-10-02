@@ -23,14 +23,14 @@ namespace Kotoban.Core.Utils
             { "image/svg+xml", ".svg" }
         };
 
-    /// <summary>
-    /// 画像のContent-Typeからファイル拡張子（ドット付き）を取得します。
-    /// 未対応の場合は fallbackExtension を返します。
-    /// </summary>
-    /// <param name="contentType">MIME Content-Type 文字列（例: "image/png"）</param>
-    /// <param name="fallbackExtension">Content-Type が未対応の場合に返す拡張子。デフォルトは ".png"。</param>
-    /// <returns>ドット付きのファイル拡張子（例: ".png"）</returns>
-    public static string GetImageFileExtensionFromContentType(string? contentType, string fallbackExtension = ".png")
+        /// <summary>
+        /// 画像のContent-Typeからファイル拡張子（ドット付き）を取得します。
+        /// 未対応の場合は fallbackExtension を返します。
+        /// </summary>
+        /// <param name="contentType">MIME Content-Type 文字列（例: "image/png"）</param>
+        /// <param name="fallbackExtension">Content-Type が未対応の場合に返す拡張子。デフォルトは ".png"。</param>
+        /// <returns>ドット付きのファイル拡張子（例: ".png"）</returns>
+        public static string GetImageFileExtensionFromContentType(string? contentType, string fallbackExtension = ".png")
         {
             // Content-Typeがnullや空文字の場合はフォールバック拡張子を返す
             if (string.IsNullOrWhiteSpace(contentType))
