@@ -197,7 +197,7 @@ public class Program
             logger.LogInformation("Application starting.");
 
             // ここで host を丸ごと渡すのはベストプラクティスでないと。
-            await RunApplicationLoop(host.Services);
+            await RunApplicationLoopAsync(host.Services);
 
             // 一時画像を掃除するなら、ここが一番の場所。
             // finally で無防備にやると例外が飛んだときに困る。
@@ -234,7 +234,7 @@ public class Program
         }
     }
 
-    private static async Task RunApplicationLoop(IServiceProvider services)
+    private static async Task RunApplicationLoopAsync(IServiceProvider services)
     {
         // scope とは、app-wide でなく、その中の特定のライフサイクルのこと。
         // WPF の MainWindows がイメージとして近そう。
@@ -253,7 +253,7 @@ public class Program
         // Build 後に ILogger<ActionDispatcher> を使いたいので、サービス登録のところでなく、ここで action を登録。
         var actionDispatcher = scopedServices.GetRequiredService<ActionDispatcher>();
         var actionLogger = scopedServices.GetRequiredService<ILogger<ActionDispatcher>>();
-        actionDispatcher.Register("trace", parameters =>
+        actionDispatcher.Register("trace", async parameters =>
         {
             // トレースは、パラメーターの書き方次第であり、そこにミスがなければランタイムで突然落ちることはない。
             // よって、parameters を厳しめに見ておく。
@@ -287,7 +287,7 @@ public class Program
             if (valueObj == null)
             {
                 actionLogger.LogTrace("{Key}: {Value}", key, null);
-                return Task.CompletedTask;
+                return;
             }
             if (valueObj is not string value)
             {
@@ -295,7 +295,7 @@ public class Program
             }
 
             actionLogger.LogTrace("{Key}: {Value}", key, value);
-            return Task.CompletedTask;
+            return;
         });
 
         while (true)

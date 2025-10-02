@@ -80,11 +80,11 @@ public class ImageManager : IImageManager
     }
 
     /// <inheritdoc />
-    public Task<SavedImage?> StartImageEditingAsync(Entry entry)
+    public async Task<SavedImage?> StartImageEditingAsync(Entry entry)
     {
         if (string.IsNullOrWhiteSpace(entry.ImageFileName))
         {
-            return Task.FromResult<SavedImage?>(null);
+            return null;
         }
 
         var currentImagePath = Path.Combine(FinalImageDirectory, entry.ImageFileName);
@@ -105,7 +105,7 @@ public class ImageManager : IImageManager
         var tempFileName = string.Format(_settings.TempImageFileNamePattern, entry.Id, "0", extension);
         var tempImagePath = Path.Combine(TempImageDirectory, tempFileName);
 
-        File.Copy(currentImagePath, tempImagePath, overwrite: true);
+        await FileUtils.CopyAsync(currentImagePath, tempImagePath, overwrite: true);
 
         var result = new SavedImage
         {
@@ -116,7 +116,7 @@ public class ImageManager : IImageManager
             ImagePrompt = entry.ImagePrompt
         };
 
-        return Task.FromResult<SavedImage?>(result);
+        return result;
     }
 
     /// <inheritdoc />
@@ -167,11 +167,11 @@ public class ImageManager : IImageManager
     }
 
     /// <inheritdoc />
-    public Task CleanupTempImagesAsync(Guid? entryId)
+    public async Task CleanupTempImagesAsync(Guid? entryId)
     {
         if (!Directory.Exists(TempImageDirectory))
         {
-            return Task.CompletedTask;
+            return;
         }
 
         var files = Directory.GetFiles(TempImageDirectory);
@@ -235,6 +235,6 @@ public class ImageManager : IImageManager
             }
         }
 
-        return Task.CompletedTask;
+        return;
     }
 }

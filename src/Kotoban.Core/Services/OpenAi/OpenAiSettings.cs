@@ -20,12 +20,12 @@ public class OpenAiSettings
     /// <summary>
     /// チャットモデル名。
     /// </summary>
-    public string ChatModel { get; set; } = "gpt-5";
+    public string ChatModel { get; set; } = "gpt-4.1";
 
     /// <summary>
     /// 画像生成モデル名。
     /// </summary>
-    public string ImageModel { get; set; } = "gpt-image-1";
+    public string ImageModel { get; set; } = "dall-e-3";
 
     /// <summary>
     /// OpenAI API リクエストのデフォルトタイムアウト時間。

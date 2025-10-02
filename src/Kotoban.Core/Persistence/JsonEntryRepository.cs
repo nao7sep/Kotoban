@@ -170,7 +170,7 @@ public class JsonEntryRepository : IEntryRepository
                     var backupFileName = $"{originalFileNameWithoutExtension}-{timestamp}.json";
                     var backupPath = Path.Combine(BackupDirectory, backupFileName);
 
-                    File.Copy(DataFile, backupPath, true);
+                    await FileUtils.CopyAsync(DataFile, backupPath, true);
                 }
             }
             catch (Exception ex)
