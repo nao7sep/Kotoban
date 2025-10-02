@@ -8,9 +8,10 @@ namespace Kotoban.Core.Models;
 public class SavedImage
 {
     /// <summary>
-    /// 画像ファイルの相対パス。
+    /// 画像ファイル名（拡張子付き）。
+    /// 画像ディレクトリに保存されるファイル名のみを格納します。
     /// </summary>
-    public string RelativeImagePath { get; set; } = string.Empty;
+    public string FileName { get; set; } = string.Empty;
 
     /// <summary>
     /// 画像生成用のコンテキスト。

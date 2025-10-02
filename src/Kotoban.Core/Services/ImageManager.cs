@@ -40,9 +40,9 @@ public class ImageManager : IImageManager
     /// <param name="settings">Kotobanの設定</param>
     public ImageManager(KotobanSettings settings)
     {
-        if (string.IsNullOrWhiteSpace(settings.RelativeImageDirectory))
+        if (string.IsNullOrWhiteSpace(settings.FinalImageDirectory))
         {
-            throw new InvalidOperationException("RelativeImageDirectory is required.");
+            throw new InvalidOperationException("FinalImageDirectory is required.");
         }
         if (string.IsNullOrWhiteSpace(settings.TempImageDirectory))
         {
@@ -59,14 +59,10 @@ public class ImageManager : IImageManager
 
         _settings = settings;
 
-        FinalImageDirectory = _settings.RelativeImageDirectory;
+        FinalImageDirectory = _settings.FinalImageDirectory;
         if (!Path.IsPathFullyQualified(FinalImageDirectory))
         {
             FinalImageDirectory = AppPath.GetAbsolutePath(FinalImageDirectory);
-        }
-        else
-        {
-            throw new InvalidOperationException("RelativeImageDirectory must be a relative path.");
         }
 
         TempImageDirectory = _settings.TempImageDirectory;
@@ -86,12 +82,12 @@ public class ImageManager : IImageManager
     /// <inheritdoc />
     public Task<SavedImage?> StartImageEditingAsync(Entry entry)
     {
-        if (string.IsNullOrWhiteSpace(entry.RelativeImagePath))
+        if (string.IsNullOrWhiteSpace(entry.ImageFileName))
         {
             return Task.FromResult<SavedImage?>(null);
         }
 
-        var currentImagePath = AppPath.GetAbsolutePath(entry.RelativeImagePath);
+        var currentImagePath = Path.Combine(FinalImageDirectory, entry.ImageFileName);
         if (!File.Exists(currentImagePath))
         {
             // その後すぐ画像をつくることが多いのでなんとかなりそうだし、
@@ -105,7 +101,7 @@ public class ImageManager : IImageManager
 
         Directory.CreateDirectory(TempImageDirectory);
 
-        var extension = Path.GetExtension(entry.RelativeImagePath);
+        var extension = Path.GetExtension(entry.ImageFileName);
         var tempFileName = string.Format(_settings.TempImageFileNamePattern, entry.Id, "0", extension);
         var tempImagePath = Path.Combine(TempImageDirectory, tempFileName);
 
@@ -113,7 +109,7 @@ public class ImageManager : IImageManager
 
         var result = new SavedImage
         {
-            RelativeImagePath = Path.GetRelativePath(TempImageDirectory, tempImagePath),
+            FileName = tempFileName,
             ImageContext = entry.ImageContext,
             // これも落とすほどでないが、null だと何かがおかしいのは間違いないので。
             GeneratedAtUtc = entry.ImageGeneratedAtUtc ?? throw new InvalidOperationException("ImageGeneratedAtUtc is null"),
@@ -142,7 +138,7 @@ public class ImageManager : IImageManager
 
         return new SavedImage
         {
-            RelativeImagePath = Path.GetRelativePath(TempImageDirectory, tempImagePath),
+            FileName = tempFileName,
             ImageContext = imageContext,
             GeneratedAtUtc = generatedAtUtc,
             ImagePrompt = imagePrompt
@@ -152,7 +148,7 @@ public class ImageManager : IImageManager
     /// <inheritdoc />
     public Task<string> FinalizeImageAsync(Entry entry, SavedImage selectedImage)
     {
-        var tempImagePath = Path.Combine(TempImageDirectory, selectedImage.RelativeImagePath);
+        var tempImagePath = Path.Combine(TempImageDirectory, selectedImage.FileName);
         if (!File.Exists(tempImagePath))
         {
             throw new FileNotFoundException($"Temporary image file not found: {tempImagePath}");
@@ -166,8 +162,7 @@ public class ImageManager : IImageManager
 
         File.Move(tempImagePath, finalImagePath, overwrite: true);
 
-        var relativePath = Path.GetRelativePath(AppPath.ExecutableDirectory, finalImagePath);
-        return Task.FromResult(relativePath);
+        return Task.FromResult(finalFileName);
     }
 
     /// <inheritdoc />

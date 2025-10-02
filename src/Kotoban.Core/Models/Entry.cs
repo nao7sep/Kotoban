@@ -75,9 +75,11 @@ public class Entry
     public Dictionary<ExplanationLevel, string> Explanations { get; set; } = new();
 
     /// <summary>
-    /// 説明画像の相対ファイルパス。
+    /// 説明画像のファイル名（拡張子付き）。
+    /// 画像ファイルは画像ディレクトリに保存され、ここにはファイル名のみを格納します。
+    /// この仕様では画像が万単位になったときにパフォーマンスが落ちそうだが、その前に学年などで区切るだろうからシンプルさを優先。
     /// </summary>
-    public string? RelativeImagePath { get; set; }
+    public string? ImageFileName { get; set; }
 
     /// <summary>
     /// AIが画像を生成した際に返された、画像を再現するためのプロンプト。
@@ -108,12 +110,12 @@ public class Entry
     /// 生成されたAIの画像を登録します。
     /// </summary>
     /// <param name="imageContext">画像生成に使用されたコンテキスト</param>
-    /// <param name="imagePath">画像の相対パス</param>
+    /// <param name="imageFileName">画像ファイル名（拡張子付き）</param>
     /// <param name="imagePrompt">画像の生成に使用されたプロンプト</param>
-    public void RegisterGeneratedImage(string? imageContext, string imagePath, string? imagePrompt)
+    public void RegisterGeneratedImage(string? imageContext, string imageFileName, string? imagePrompt)
     {
         ImageContext = imageContext;
-        RelativeImagePath = imagePath;
+        ImageFileName = imageFileName;
         ImagePrompt = imagePrompt;
         ImageGeneratedAtUtc = DateTime.UtcNow;
         if (Explanations.Count == 0)
@@ -137,7 +139,7 @@ public class Entry
     public void ClearAiContent()
     {
         Explanations.Clear();
-        RelativeImagePath = null;
+        ImageFileName = null;
         ImagePrompt = null;
         Status = EntryStatus.PendingAiGeneration;
         ExplanationGeneratedAtUtc = null;

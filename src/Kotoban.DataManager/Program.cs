@@ -802,7 +802,7 @@ public class Program
             Console.WriteLine("説明: なし");
         }
 
-        Console.WriteLine($"画像: {(string.IsNullOrWhiteSpace(item.RelativeImagePath) ? "なし" : item.RelativeImagePath)}");
+        Console.WriteLine($"画像: {(string.IsNullOrWhiteSpace(item.ImageFileName) ? "なし" : item.ImageFileName)}");
 
         while (true)
         {
@@ -813,7 +813,7 @@ public class Program
             var menuIndex = 1;
 
             menuOptions.Add(menuIndex++.ToString(), item.Explanations.Any() ? "説明を再生成する" : "説明を生成する");
-            menuOptions.Add(menuIndex++.ToString(), !string.IsNullOrWhiteSpace(item.RelativeImagePath) ? "画像を再生成する" : "画像を生成する");
+            menuOptions.Add(menuIndex++.ToString(), !string.IsNullOrWhiteSpace(item.ImageFileName) ? "画像を再生成する" : "画像を生成する");
             menuOptions.Add(menuIndex++.ToString(), "戻る");
 
             foreach (var kvp in menuOptions)
@@ -961,7 +961,7 @@ public class Program
                 var generatedImageResult = await aiContentService.GenerateImageAsync(item, newImageContext);
                 var savedImage = await imageManager.SaveGeneratedImageAsync(item, generatedImageResult.ImageBytes, generatedImageResult.Extension, savedImages.Count + 1, generatedImageResult.Context, DateTime.UtcNow, generatedImageResult.ImagePrompt);
                 savedImages.Add(savedImage);
-                Console.WriteLine($"画像を生成しました: {savedImage.RelativeImagePath}");
+                Console.WriteLine($"画像を生成しました: {savedImage.FileName}");
             }
             catch (Exception ex)
             {
@@ -1034,12 +1034,13 @@ public class Program
     private static async Task DeleteAiContentAsync(Entry item, IServiceProvider services, string? completionMessage)
     {
         var repository = services.GetRequiredService<IEntryRepository>();
-        var logger = services.GetRequiredService<ILogger<Program>>();
+        // インターフェースでは、FinalImageDirectory をもらえない。
+        var imageManager = services.GetRequiredService<ImageManager>();
 
         // 画像ファイルの物理削除
-        if (!string.IsNullOrWhiteSpace(item.RelativeImagePath))
+        if (!string.IsNullOrWhiteSpace(item.ImageFileName))
         {
-            var imagePath = AppPath.GetAbsolutePath(item.RelativeImagePath);
+            var imagePath = Path.Combine(imageManager.FinalImageDirectory, item.ImageFileName);
             if (File.Exists(imagePath))
             {
                 // 迷ったが、例外をキャッチせず、ログへの書き込みも行わず、
@@ -1126,7 +1127,7 @@ public class Program
 
         Console.WriteLine();
         Console.WriteLine("=== 画像 ===");
-        Console.WriteLine($"画像ファイルパス: {item.RelativeImagePath ?? "なし"}");
+        Console.WriteLine($"画像ファイルパス: {item.ImageFileName ?? "なし"}");
         Console.WriteLine($"画像プロンプト: {item.ImagePrompt ?? "なし"}");
     }
 

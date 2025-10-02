@@ -11,7 +11,7 @@ namespace Kotoban.Core.Models
         /// <summary>
         /// JSONデータファイルのパス。相対パスまたは絶対パスを指定可能。
         /// </summary>
-        public string JsonDataFile { get; set; } = "Kotoban-Data.json";
+        public string JsonDataFile { get; set; } = "Kotoban.json";
 
         /// <summary>
         /// ファイルのバックアップ用ディレクトリパス。
@@ -30,9 +30,10 @@ namespace Kotoban.Core.Models
         public int MaxBackupFiles { get; set; } = 100;
 
         /// <summary>
-        /// データファイルの場所からの画像ディレクトリへの相対パス。
+        /// 最終画像ファイルのディレクトリパス。
+        /// 相対パスの場合はアプリケーションディレクトリを基準とし、絶対パスの場合はそのまま使用します。
         /// </summary>
-        public string RelativeImageDirectory { get; set; } = "Kotoban-Files/Images";
+        public string FinalImageDirectory { get; set; } = "Images";
 
         /// <summary>
         /// 画像編集時の一時ファイル用ディレクトリパス。

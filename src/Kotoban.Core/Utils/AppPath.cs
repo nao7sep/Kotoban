@@ -26,11 +26,15 @@ public static class AppPath
 
     /// <summary>
     /// 実行可能ファイルのディレクトリからの相対パスを絶対パスに変換します。
+    /// 入力が絶対パスの場合は例外をスローします。
     /// </summary>
-    /// <param name="relativePath">変換する相対パス。</param>
+    /// <param name="relativePath">変換する相対パス（絶対パスは不可）。</param>
     /// <returns>解決された絶対パス。</returns>
+    /// <exception cref="ArgumentException">relativePath が絶対パスの場合</exception>
     public static string GetAbsolutePath(string relativePath)
     {
+        if (Path.IsPathFullyQualified(relativePath))
+            throw new ArgumentException("Path must be relative.", nameof(relativePath));
         var combinedPath = Path.Combine(ExecutableDirectory, relativePath);
         return Path.GetFullPath(combinedPath);
     }

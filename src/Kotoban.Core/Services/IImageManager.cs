@@ -41,7 +41,7 @@ public interface IImageManager
     /// </summary>
     /// <param name="entry">対象のエントリ</param>
     /// <param name="selectedImage">選択された画像情報</param>
-    /// <returns>最終的な相対パス</returns>
+    /// <returns>最終的なファイル名</returns>
     Task<string> FinalizeImageAsync(Entry entry, SavedImage selectedImage);
 
     /// <summary>
