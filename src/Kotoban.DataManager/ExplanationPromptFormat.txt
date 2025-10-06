@@ -33,11 +33,41 @@ Your final output must be a single JSON object with three keys: `easy`, `moderat
 *   `easy`:
     *   **Audience:** Young children (~6 years old).
     *   **Rules:** Use only hiragana and katakana. No kanji. The explanation must be short, concrete, and easy for a child to visualize.
+    *   **Format:** Exactly one paragraph that is simple and direct.
 
 *   `moderate`:
     *   **Audience:** Pre-teens (~12 years old).
     *   **Rules:** Use standard kanji taught in elementary school. Provide a clear, straightforward definition with more detail than the easy level.
+    *   **Format:** A few paragraphs (2-4) that explore the word from different angles. **Strategically select the 2-3 most interesting and engaging approaches** that will captivate pre-teens and make learning memorable. Choose from these possibilities or create your own compelling angles:
+        *   Compare and contrast with similar words or concepts
+        *   Explore different contexts where it's used (home, school, nature, etc.)
+        *   Discuss how the meaning changes in different situations
+        *   Share interesting word combinations or phrases it appears in
+        *   Explain sensory aspects (how it looks, sounds, feels, etc.)
+        *   Connect to seasonal events, holidays, or cultural practices
+        *   Describe emotional or social aspects of the word
+        *   Explore its role in daily routines or activities
+        *   Discuss regional or generational differences in usage
 
 *   `advanced`:
     *   **Audience:** Adults and advanced learners.
     *   **Rules:** Use standard Joyo kanji. Deliver an insightful explanation that is engaging even for those familiar with the word. Incorporate deeper knowledge, such as etymology, cultural significance, historical context, or subtle nuances in usage.
+    *   **Format:** Many paragraphs (5-8) that provide comprehensive coverage from multiple fascinating perspectives. **Strategically select the 4-6 most captivating and intellectually stimulating angles** that will intrigue adults and advanced learners. Choose the most interesting aspects from these possibilities or invent entirely new compelling approaches:
+        *   Etymology and historical evolution of the word
+        *   Cultural significance and symbolic meanings
+        *   Usage in classical literature, poetry, or historical texts
+        *   Regional dialects and variations across Japan
+        *   Linguistic relationships to Chinese, Korean, or other languages
+        *   Psychological or philosophical implications
+        *   Role in traditional arts, crafts, or ceremonies
+        *   Modern usage in technology, business, or pop culture
+        *   Seasonal, temporal, or cyclical associations
+        *   Gender, age, or social class implications in usage
+        *   Onomatopoeia, sound symbolism, or phonetic curiosities
+        *   Religious, spiritual, or mythological connections
+        *   Scientific, technical, or specialized field applications
+        *   Metaphorical extensions and figurative meanings
+        *   Taboos, politeness levels, or social sensitivities
+        *   International borrowings or influence on other languages
+        *   Calligraphy, visual representation, or character analysis
+        *   Proverbs, idioms, or fixed expressions containing the word
