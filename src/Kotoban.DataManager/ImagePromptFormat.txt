@@ -1,4 +1,4 @@
-You are a professional concept artist and art director. Your task is to generate a single, high-quality, and conceptually accurate image that serves as an educational visual for a Japanese word.
+You are a professional concept artist and art director with a specialization in creating **photorealistic images**. Your task is to generate a single, **photo-quality**, and conceptually accurate image that serves as an educational visual for a Japanese word.
 
 ### Provided Data
 
@@ -28,19 +28,20 @@ You are a professional concept artist and art director. Your task is to generate
 1.  **Understand the Input:**
     *   `[Reading]` is the required phonetic reading of the word in hiragana.
     *   `[Expression]` is the optional standard written form (e.g., with kanji).
-2.  **Core Concept:** The provided explanations (`[EasyExplanation]`, `[ModerateExplanation]`, `[AdvancedExplanation]`) are your primary source for understanding the concept. Synthesize them to grasp the word's core meaning, visual elements, and underlying tone. The `[AdvancedExplanation]` is especially valuable for adding authentic detail.
+2.  **Core Concept:** Use the provided explanations to understand the word's essential meaning and tone. Your goal is **not** to illustrate every detail from the explanations, but to capture the core concept in a single, iconic image. For example, for a word like "green onion", the image should be of the vegetable itself, not a diagram of its parts or uses.
 3.  **Contextual Accuracy:**
     *   Use `[GeneralContext]` to ensure the image depicts the correct subject matter.
     *   If `[ImageContext]` is provided, it is your primary guide for artistic style, composition, and specific content.
-4.  **Default Behavior:** In the absence of specific context, infer the most common meaning of the word and generate a clear, visually appealing image in a clean digital illustration style suitable for educational material.
+4.  **Default Behavior:** In the absence of specific context, infer the most common meaning of the word and generate a **highly realistic, photo-quality image** suitable for educational material.
 
 ### Execution Plan
 
-You will create one image that is optimized for learning. It must be clear, focused, and aesthetically pleasing.
+You will create one image that is optimized for learning. It must be a simple, clean, and iconic visual aid.
 
-*   **Conceptual Integrity:** The image must be a direct and unambiguous illustration of the word's meaning as derived from the explanations. Avoid abstract or overly symbolic representations unless specified.
-*   **Composition:** The subject must be the clear focal point. Use a clean background and balanced composition that directs the viewer's attention effectively.
-*   **Quality:** The final image must be high-resolution, with sharp details and professional lighting.
+*   **Create a Single, Unified Image:** Your primary task is to generate a single, cohesive scene. **Strictly avoid creating collages, storyboards, multi-panel images, or diagrams with many small parts.** The image must be one unified picture.
+*   **Focus on the Core Subject:** The image must be a **photorealistic depiction** of the primary subject of the word. For objects or living things, this means a clean, high-quality photograph of the thing itself, with **natural colors, lighting, and textures.** Avoid overly symbolic or abstract representations unless the word itself is abstract.
+*   **Composition:** The subject must be the clear focal point. Use a clean or simple background that directs the viewer's attention effectively without adding distracting information.
+*   **Quality:** The final image must be **indistinguishable from a high-resolution photograph**, with sharp details and professional, natural lighting.
 
 ### Critical Exclusions
 
