@@ -22,6 +22,14 @@ public class OpenAiRequestFactory
     /// </summary>
     public string ImageModel { get; }
 
+    // ここに ChatRequestAdditionalData と ImageRequestAdditionalData を追加し、
+    // appsettings.json から OpenAiSettings 経由で受け取るようにしたが、
+    // Microsoft.Extensions.Configuration.Binder では Dictionary の値の型が string になるようで、
+    // それを serialize して API に送ったところ、decimal や integer が必要なのに、のエラーが出た。
+    // Binder は、deserialize 先に型情報があれば変換してくれるそうだが、object では勝手に string にしてしまう。
+    // *AdditionalData のみ個別に読み込んでまで実現したいほどの機能でもないので、今回は見送る。
+    // appsettings.json を Binder で扱うにおける問題に気づけたのは収穫。
+
     /// <summary>
     /// DI された設定から新しいインスタンスを生成します。
     /// </summary>
@@ -98,16 +106,18 @@ public class OpenAiRequestFactory
     /// </summary>
     /// <param name="prompt">画像生成プロンプト</param>
     /// <param name="n">生成する画像の枚数（デフォルト: 1）</param>
-    /// <param name="size">画像サイズ（省略可能）</param>
     /// <param name="quality">画質（省略可能）</param>
+    /// <param name="size">画像サイズ（省略可能）</param>
+    /// <param name="style">画像のスタイル（省略可能）</param>
     /// <param name="responseFormat">レスポンス形式（省略可能）</param>
     /// <param name="additionalData">追加パラメータ（省略可能）</param>
     /// <returns>画像生成リクエスト</returns>
     public OpenAiImageRequest CreateImageRequest(
         string prompt,
         int? n = null,
-        string? size = null,
         string? quality = null,
+        string? size = null,
+        string? style = null,
         string? responseFormat = null,
         Dictionary<string, object>? additionalData = null)
     {
@@ -116,8 +126,9 @@ public class OpenAiRequestFactory
             Model = ImageModel,
             Prompt = prompt,
             N = n,
-            Size = size,
             Quality = quality,
+            Size = size,
+            Style = style,
             ResponseFormat = responseFormat,
             AdditionalData = additionalData
         };

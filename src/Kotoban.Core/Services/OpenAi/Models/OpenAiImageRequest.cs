@@ -38,6 +38,12 @@ public class OpenAiImageRequest : OpenAiApiObjectBase
     public string? Size { get; set; }
 
     /// <summary>
+    /// 画像のスタイル（例: "vivid", "natural"）。
+    /// </summary>
+    [JsonPropertyName("style")]
+    public string? Style { get; set; }
+
+    /// <summary>
     /// レスポンス形式（"url" または "b64_json"）。
     /// </summary>
     [JsonPropertyName("response_format")]

@@ -33,6 +33,11 @@ public class OpenAiImageRequestConverter : JsonConverter<OpenAiImageRequest>
             writer.WriteString("size", value.Size);
         }
 
+        if (value.Style != null)
+        {
+            writer.WriteString("style", value.Style);
+        }
+
         if (value.ResponseFormat != null)
         {
             writer.WriteString("response_format", value.ResponseFormat);
