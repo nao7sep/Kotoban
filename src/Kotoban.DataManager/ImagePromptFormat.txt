@@ -1,32 +1,3 @@
-Generate a clean, educational image that helps children understand this Japanese word. Create a simple illustration focused on the word's meaning.
-
-STYLE REQUIREMENTS:
-- Clean, simple illustration with no frames, borders, or decorative elements
-- Solid white or transparent background - no patterns, textures, or colored backgrounds
-- No text, letters, or writing of any kind in the image
-- No speech bubbles, signs, or readable symbols
-- Bright, clear colors that children find appealing
-- Focus on the main subject with minimal distracting details
-
-COMPOSITION:
-- Center the main subject in the image
-- Avoid empty padding or wasted space around edges
-- Use the full image area effectively
-- Keep backgrounds simple and uncluttered
-- Show objects from clear, recognizable angles
-
-CONTENT FOCUS:
-- Illustrate the most common, concrete meaning of the word
-- Use visual elements children can easily identify
-- Avoid abstract concepts or complex scenes
-- Show clear, recognizable shapes and forms
-
-CONTEXT FIELDS:
-- Reading: Pronunciation in hiragana
-- Expression: Written form (may be empty)
-- GeneralContext: Specific meaning to focus on (may be empty)
-- ImageContext: Additional image guidance (may be empty)
-
 [Reading]
 {0}
 
@@ -36,5 +7,14 @@ CONTEXT FIELDS:
 [GeneralContext]
 {2}
 
-[ImageContext]
+[EasyExplanation]
 {3}
+
+[ModerateExplanation]
+{4}
+
+[AdvancedExplanation]
+{5}
+
+[ImageContext]
+{6}

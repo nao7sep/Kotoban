@@ -124,11 +124,21 @@ public class OpenAiContentService : IAiContentService
         // プロンプトフォーマットをプロバイダーから取得
         var promptFormat = await _promptFormatProvider.GetImagePromptFormatAsync();
 
+        string? GetExplanationOrNull(ExplanationLevel level)
+        {
+            if (entry.Explanations == null)
+                return null;
+            return entry.Explanations.TryGetValue(level, out var value) ? value : null;
+        }
+
         var prompt = string.Format(
             promptFormat,
             entry.Reading,
             entry.Expression,
             entry.GeneralContext,
+            GetExplanationOrNull(ExplanationLevel.Easy),
+            GetExplanationOrNull(ExplanationLevel.Moderate),
+            GetExplanationOrNull(ExplanationLevel.Advanced),
             newImageContext
         );
 
