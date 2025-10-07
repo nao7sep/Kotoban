@@ -390,7 +390,12 @@ public class Program
 
         while (true)
         {
-            var reading = ReadString("読みがな: ");
+            var reading = ReadString("読みがな (キャンセルする場合は 'c'): ");
+            if (string.Equals(reading, "c", StringComparison.OrdinalIgnoreCase))
+            {
+                Console.WriteLine("項目の追加をキャンセルしました。");
+                return;
+            }
             if (!string.IsNullOrWhiteSpace(reading))
             {
                 newItem.Reading = reading.Trim();
@@ -881,52 +886,53 @@ public class Program
                 generatedExplanationResults.Add(null);
             }
 
-            Console.WriteLine();
-            Console.WriteLine("=== どうしまっか～？ ===");
-            if (item.Explanations.Any())
+            while (true)
             {
-                Console.WriteLine("0. オリジナルの説明を使用する");
-            }
-            for (int i = 0; i < generatedExplanationResults.Count; i++)
-            {
-                if (generatedExplanationResults[i] != null)
+                Console.WriteLine();
+                Console.WriteLine("=== どうしまっか～？ ===");
+                if (item.Explanations.Any())
                 {
-                    Console.WriteLine($"{i + 1}. {i + 1}回目に生成した説明を使用する");
+                    Console.WriteLine("0. オリジナルの説明を使用する");
                 }
-            }
-            Console.WriteLine("r または Enter: もう一度生成する（リトライ）");
-            Console.WriteLine("e: 終了する（キャンセル）");
-            var choice = ReadString("選択してください: ");
+                for (int i = 0; i < generatedExplanationResults.Count; i++)
+                {
+                    if (generatedExplanationResults[i] != null)
+                    {
+                        Console.WriteLine($"{i + 1}. {i + 1}回目に生成した説明を使用する");
+                    }
+                }
+                Console.WriteLine("r または Enter: もう一度生成する（リトライ）");
+                Console.WriteLine("e: 終了する（キャンセル）");
+                var choice = ReadString("選択してください: ");
 
-            if (choice == "0" && originalExplanations.Any())
-            {
-                Console.WriteLine("オリジナルの説明を保持します。");
-                break;
-            }
+                if (choice == "0" && originalExplanations.Any())
+                {
+                    Console.WriteLine("オリジナルの説明を保持します。");
+                    return;
+                }
 
-            if (int.TryParse(choice, out int idx) && idx >= 1 && idx <= generatedExplanationResults.Count && generatedExplanationResults[idx - 1] != null)
-            {
-                // null でないと確認されるが、添え字が計算式だからか、null かもしれないと叱られる。
-                var selected = generatedExplanationResults[idx - 1]!;
-                item.RegisterGeneratedExplanations(selected.Context, selected.Explanations);
-                await repository.UpdateAsync(item);
-                Console.WriteLine($"{idx}回目の説明を保存しました。");
-                break;
-            }
+                if (int.TryParse(choice, out int idx) && idx >= 1 && idx <= generatedExplanationResults.Count && generatedExplanationResults[idx - 1] != null)
+                {
+                    // null でないと確認されるが、添え字が計算式だからか、null かもしれないと叱られる。
+                    var selected = generatedExplanationResults[idx - 1]!;
+                    item.RegisterGeneratedExplanations(selected.Context, selected.Explanations);
+                    await repository.UpdateAsync(item);
+                    Console.WriteLine($"{idx}回目の説明を保存しました。");
+                    return;
+                }
 
-            if (string.IsNullOrWhiteSpace(choice) || choice.Equals("r", StringComparison.OrdinalIgnoreCase))
-            {
-                continue;
-            }
+                if (string.IsNullOrWhiteSpace(choice) || choice.Equals("r", StringComparison.OrdinalIgnoreCase))
+                {
+                    break;
+                }
 
-            if (choice.Equals("e", StringComparison.OrdinalIgnoreCase))
-            {
-                break;
-            }
+                if (choice.Equals("e", StringComparison.OrdinalIgnoreCase))
+                {
+                    return;
+                }
 
-            Console.WriteLine("無効な選択です。");
-            // 選択が無効な場合に、もう一度生成するかどうかを聞かずに生成のモードに入るのは、仕様とする。
-            // テスト時に雑に使っていて直感に反したが、本番環境では、データ喪失を防ぐため、もっと慎重に作業する。
+                Console.WriteLine("無効な選択です。");
+            }
         }
     }
 
@@ -974,57 +980,64 @@ public class Program
                 savedImages.Add(null);
             }
 
-            Console.WriteLine();
-            Console.WriteLine("=== どうしまっか～？ ===");
-            if (originalImage != null)
+            async Task CleanupTempImagesAsync()
             {
-                Console.WriteLine("0. オリジナルの画像を使用する");
+                await imageManager.CleanupTempImagesAsync(item.Id);
+                Console.WriteLine("一時ファイルをクリーンアップしました。");
             }
-            for (int i = 0; i < savedImages.Count; i++)
+
+            while (true)
             {
-                if (savedImages[i] != null)
+                Console.WriteLine();
+                Console.WriteLine("=== どうしまっか～？ ===");
+                if (originalImage != null)
                 {
-                    Console.WriteLine($"{i + 1}. {i + 1}回目に生成した画像を使用する");
+                    Console.WriteLine("0. オリジナルの画像を使用する");
                 }
-            }
-            Console.WriteLine("r または Enter: もう一度生成する（リトライ）");
-            Console.WriteLine("e: 終了する（キャンセル）");
-            var choice = ReadString("選択してください: ");
+                for (int i = 0; i < savedImages.Count; i++)
+                {
+                    if (savedImages[i] != null)
+                    {
+                        Console.WriteLine($"{i + 1}. {i + 1}回目に生成した画像を使用する");
+                    }
+                }
+                Console.WriteLine("r または Enter: もう一度生成する（リトライ）");
+                Console.WriteLine("e: 終了する（キャンセル）");
+                var choice = ReadString("選択してください: ");
 
-            if (choice == "0" && originalImage != null)
-            {
-                Console.WriteLine("オリジナルの画像を保持します。");
-                break;
-            }
+                if (choice == "0" && originalImage != null)
+                {
+                    Console.WriteLine("オリジナルの画像を保持します。");
+                    await CleanupTempImagesAsync();
+                    return;
+                }
 
-            if (int.TryParse(choice, out int idx) && idx >= 1 && idx <= savedImages.Count && savedImages[idx - 1] != null)
-            {
-                // null でないと確認されるが、添え字が計算式だからか、null かもしれないと叱られる。
-                var selected = savedImages[idx - 1]!;
-                var imagePath = await imageManager.FinalizeImageAsync(item, selected);
-                item.RegisterGeneratedImage(selected.ImageContext, imagePath, selected.ImagePrompt);
-                await repository.UpdateAsync(item);
-                Console.WriteLine($"{idx}回目の画像を保存しました。");
-                break;
-            }
+                if (int.TryParse(choice, out int idx) && idx >= 1 && idx <= savedImages.Count && savedImages[idx - 1] != null)
+                {
+                    // null でないと確認されるが、添え字が計算式だからか、null かもしれないと叱られる。
+                    var selected = savedImages[idx - 1]!;
+                    var imagePath = await imageManager.FinalizeImageAsync(item, selected);
+                    item.RegisterGeneratedImage(selected.ImageContext, imagePath, selected.ImagePrompt);
+                    await repository.UpdateAsync(item);
+                    Console.WriteLine($"{idx}回目の画像を保存しました。");
+                    await CleanupTempImagesAsync();
+                    return;
+                }
 
-            if (string.IsNullOrWhiteSpace(choice) || choice.Equals("r", StringComparison.OrdinalIgnoreCase))
-            {
-                continue;
-            }
+                if (string.IsNullOrWhiteSpace(choice) || choice.Equals("r", StringComparison.OrdinalIgnoreCase))
+                {
+                    break;
+                }
 
-            if (choice.Equals("e", StringComparison.OrdinalIgnoreCase))
-            {
-                break;
-            }
+                if (choice.Equals("e", StringComparison.OrdinalIgnoreCase))
+                {
+                    await CleanupTempImagesAsync();
+                    return;
+                }
 
-            Console.WriteLine("無効な選択です。");
-            // 選択が無効な場合に、もう一度生成するかどうかを聞かずに生成のモードに入るのは、仕様とする。
-            // テスト時に雑に使っていて直感に反したが、本番環境では、データ喪失を防ぐため、もっと慎重に作業する。
+                Console.WriteLine("無効な選択です。");
+            }
         }
-
-        await imageManager.CleanupTempImagesAsync(item.Id);
-        Console.WriteLine("一時ファイルをクリーンアップしました。");
     }
 
     private static async Task ApproveAiContentAsync(Entry item, IServiceProvider services)
@@ -1042,7 +1055,7 @@ public class Program
     {
         var repository = services.GetRequiredService<IEntryRepository>();
         // インターフェースでは、FinalImageDirectory をもらえない。
-        var imageManager = services.GetRequiredService<ImageManager>();
+        var imageManager = services.GetRequiredService<IImageManager>() as ImageManager ?? throw new InvalidOperationException("ImageManager is not available.");
 
         // 画像ファイルの物理削除
         if (!string.IsNullOrWhiteSpace(item.ImageFileName))
