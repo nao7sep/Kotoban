@@ -306,10 +306,11 @@ public class Program
             Console.WriteLine("=== メインメニュー ===");
             Console.WriteLine("1. 項目を追加する");
             Console.WriteLine("2. データを仕上げる"); // AIコンテンツの生成と項目の承認を流れ作業で。
-            Console.WriteLine("3. 項目のリストを表示する");
-            Console.WriteLine("4. 項目を表示・更新する");
-            Console.WriteLine("5. 項目を削除する");
-            Console.WriteLine("6. 終了する");
+            Console.WriteLine("3. 説明を一括生成する");
+            Console.WriteLine("4. 項目のリストを表示する");
+            Console.WriteLine("5. 項目を表示・更新する");
+            Console.WriteLine("6. 項目を削除する");
+            Console.WriteLine("7. 終了する");
             Console.Write("選択してください: ");
 
             var choice = Console.ReadLine();
@@ -325,15 +326,18 @@ public class Program
                         await FinalizeAllItemsAsync(scopedServices);
                         break;
                     case "3":
-                        await ViewAllItemsAsync(scopedServices);
+                        await GenerateAllExplanationsAsync(scopedServices);
                         break;
                     case "4":
-                        await UpdateItemAsync(scopedServices);
+                        await ViewAllItemsAsync(scopedServices);
                         break;
                     case "5":
-                        await DeleteItemAsync(scopedServices);
+                        await UpdateItemAsync(scopedServices);
                         break;
                     case "6":
+                        await DeleteItemAsync(scopedServices);
+                        break;
+                    case "7":
                         return;
                     default:
                         Console.WriteLine("無効な選択です。もう一度お試しください。");
@@ -492,6 +496,85 @@ public class Program
 
         Console.WriteLine();
         Console.WriteLine("すべての未承認項目の処理が完了しました。");
+    }
+
+    private static async Task GenerateAllExplanationsAsync(IServiceProvider services)
+    {
+        var repository = services.GetRequiredService<IEntryRepository>();
+        var aiContentService = services.GetRequiredService<IAiContentService>();
+        var logger = services.GetRequiredService<ILogger<Program>>();
+
+        Console.WriteLine();
+        Console.WriteLine("=== 説明の一括生成 ===");
+
+        // 説明がない項目を取得
+        var allItems = await repository.GetAllAsync();
+        var itemsWithoutExplanations = allItems
+            .Where(i => !i.Explanations.Any())
+            .OrderBy(i => i.CreatedAtUtc)
+            .ToList();
+
+        if (!itemsWithoutExplanations.Any())
+        {
+            Console.WriteLine("説明が必要な項目がありません。すべての項目に説明が生成済みです。");
+            return;
+        }
+
+        Console.WriteLine($"説明が未生成の項目が{itemsWithoutExplanations.Count}件見つかりました。");
+        Console.WriteLine("ESCキーを押すと処理を中断できます。");
+        Console.WriteLine();
+
+        var processedCount = 0;
+        var totalCount = itemsWithoutExplanations.Count;
+
+        foreach (var item in itemsWithoutExplanations)
+        {
+            // キャンセルチェック
+            if (Console.KeyAvailable)
+            {
+                var keyInfo = Console.ReadKey(true);
+                if (keyInfo.Key == ConsoleKey.Escape)
+                {
+                    Console.WriteLine();
+                    Console.WriteLine("処理が中断されました。");
+                    Console.WriteLine($"結果: {processedCount}/{totalCount} 件完了");
+                    return;
+                }
+            }
+
+            // たまに突発的に API が遅くてタイムアウトになるなどがある。
+            // 一度の失敗でループから抜けてしまうと「数時間放置したのに」になるので、ログを書き込んで続行。
+
+            try
+            {
+                // 現在処理中の項目を表示
+                Console.Write($"処理中: {GetDisplayText(item)} ({processedCount + 1}/{totalCount})...");
+
+                // 説明を生成
+                // 一括生成では追加のコンテキストを指定せず、とりあえず null で生成してみる。
+                var generatedExplanationResult = await aiContentService.GenerateExplanationsAsync(item, newExplanationContext: null);
+
+                // 生成された説明を項目に登録
+                item.RegisterGeneratedExplanations(generatedExplanationResult.Context, generatedExplanationResult.Explanations);
+
+                // データベースに保存
+                await repository.UpdateAsync(item);
+
+                processedCount++;
+                Console.WriteLine(" 完了");
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to generate explanations for entry {EntryId}", item.Id);
+
+                // エラーが発生してもカウントは進める（スキップ扱い）
+                processedCount++;
+            }
+        }
+
+        Console.WriteLine();
+        Console.WriteLine($"説明の一括生成が完了しました。");
+        Console.WriteLine($"結果: {processedCount}/{totalCount} 件完了");
     }
 
     private static async Task ViewAllItemsAsync(IServiceProvider services)
