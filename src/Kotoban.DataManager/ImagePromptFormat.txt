@@ -11,14 +11,8 @@ You are a professional concept artist and art director with a specialization in 
 [GeneralContext]
 {2}
 
-[EasyExplanation]
-{3}
-
 [ModerateExplanation]
 {4}
-
-[AdvancedExplanation]
-{5}
 
 [ImageContext]
 {6}

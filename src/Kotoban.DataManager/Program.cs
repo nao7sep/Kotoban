@@ -797,7 +797,7 @@ public class Program
             {
                 // ParseExplanations が生成した順に入っているので、今のところソートは不要。
                 // 辞書は、厳密には順序が不定のはずだが、実装上は追加順に保持される。
-                Console.WriteLine($"{kvp.Key}: {kvp.Value}");
+                PrintExplanation(kvp.Key, kvp.Value);
             }
         }
         else
@@ -872,7 +872,7 @@ public class Program
                 generatedExplanationResults.Add(generatedExplanationResult);
                 foreach (var kvp in generatedExplanationResult.Explanations)
                 {
-                    Console.WriteLine($"{kvp.Key}: {kvp.Value}");
+                    PrintExplanation(kvp.Key, kvp.Value);
                 }
             }
             catch (Exception ex)
@@ -1096,6 +1096,33 @@ public class Program
         return string.IsNullOrWhiteSpace(input) ? defaultValue : input;
     }
 
+    private static void PrintExplanation(ExplanationLevel level, string explanation)
+    {
+        Console.WriteLine();
+
+        switch (level)
+        {
+            case ExplanationLevel.Easy:
+                Console.BackgroundColor = ConsoleColor.Blue;
+                Console.ForegroundColor = ConsoleColor.White;
+                break;
+            case ExplanationLevel.Moderate:
+                Console.BackgroundColor = ConsoleColor.Yellow;
+                Console.ForegroundColor = ConsoleColor.Black;
+                break;
+            case ExplanationLevel.Advanced:
+                Console.BackgroundColor = ConsoleColor.Red;
+                Console.ForegroundColor = ConsoleColor.White;
+                break;
+        }
+
+        Console.Write($"[{level}]");
+        Console.ResetColor();
+        Console.WriteLine();
+
+        Console.WriteLine(explanation);
+    }
+
     private static void PrintItemDetails(Entry item, bool showTimestamps)
     {
         Console.WriteLine();
@@ -1124,7 +1151,7 @@ public class Program
         {
             foreach (var kvp in item.Explanations)
             {
-                Console.WriteLine($"{kvp.Key}: {kvp.Value}");
+                PrintExplanation(kvp.Key, kvp.Value);
             }
         }
         else
