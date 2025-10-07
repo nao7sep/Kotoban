@@ -340,7 +340,8 @@ public class Program
                     case "7":
                         return;
                     default:
-                        Console.WriteLine("無効な選択です。もう一度お試しください。");
+                        Console.WriteLine("無効な選択です。");
+                        Console.WriteLine("もう一度お試しください。");
                         break;
                 }
             }
@@ -421,7 +422,8 @@ public class Program
         newItem.CreatedAtUtc = DateTime.UtcNow;
 
         await repository.AddAsync(newItem);
-        Console.WriteLine($"項目 '{GetDisplayText(newItem)}' が追加されました。ID: {newItem.Id}");
+        Console.WriteLine($"項目 '{GetDisplayText(newItem)}' が追加されました。");
+        Console.WriteLine($"ID: {newItem.Id}");
         await ShowAiContentMenuAsync(newItem, services);
     }
 
@@ -516,13 +518,13 @@ public class Program
 
         if (!itemsWithoutExplanations.Any())
         {
-            Console.WriteLine("説明が必要な項目がありません。すべての項目に説明が生成済みです。");
+            Console.WriteLine("説明が必要な項目がありません。");
+            Console.WriteLine("すべての項目に説明が生成済みです。");
             return;
         }
 
         Console.WriteLine($"説明が未生成の項目が{itemsWithoutExplanations.Count}件見つかりました。");
         Console.WriteLine("ESCキーを押すと処理を中断できます。");
-        Console.WriteLine();
 
         var processedCount = 0;
         var totalCount = itemsWithoutExplanations.Count;
@@ -535,7 +537,6 @@ public class Program
                 var keyInfo = Console.ReadKey(true);
                 if (keyInfo.Key == ConsoleKey.Escape)
                 {
-                    Console.WriteLine();
                     Console.WriteLine("処理が中断されました。");
                     Console.WriteLine($"結果: {processedCount}/{totalCount} 件完了");
                     return;
@@ -572,7 +573,6 @@ public class Program
             }
         }
 
-        Console.WriteLine();
         Console.WriteLine($"説明の一括生成が完了しました。");
         Console.WriteLine($"結果: {processedCount}/{totalCount} 件完了");
     }
@@ -674,7 +674,8 @@ public class Program
                 }
                 else
                 {
-                    Console.WriteLine("無効な選択です。操作をキャンセルしました。");
+                    Console.WriteLine("無効な選択です。");
+                    Console.WriteLine("操作をキャンセルしました。");
                     return null;
                 }
             }
