@@ -9,7 +9,7 @@
     <AssemblyTitle>Kotoban Core</AssemblyTitle>
     <Description>Core library for Kotoban, an AI-powered Japanese vocabulary learning tool. Contains data models, persistence layer, AI integration services, and business logic for generating multi-level explanations and educational images.</Description>
 
-    <Version>0.1.0</Version>
+    <Version>0.2.0</Version>
 
     <Authors>Yoshinao Inoguchi</Authors>
     <Company>Purrfect Disaster</Company>

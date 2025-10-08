@@ -17,7 +17,7 @@
     <AssemblyTitle>Kotoban DataManager</AssemblyTitle>
     <Description>Console application for managing Kotoban vocabulary data. Provides interactive tools for adding entries, generating AI-powered explanations and images, managing workflow states, and batch processing educational content.</Description>
 
-    <Version>0.1.0</Version>
+    <Version>0.2.0</Version>
 
     <Authors>Yoshinao Inoguchi</Authors>
     <Company>Purrfect Disaster</Company>

@@ -33,6 +33,7 @@ You will generate three unique explanations in **natural-sounding Japanese**. Ea
 *   Do not use CJK numbered characters such as ①, ②, ③, etc.
 *   Write in flowing, natural paragraphs without numerical ordering
 *   Use descriptive transitions between ideas instead of numbered points
+*   Write Japanese text naturally without artificial spacing between words or phrases. Japanese readers rely on kanji, context, and natural word boundaries to parse meaning, so avoid inserting spaces that would make the text appear childish or unnatural
 
 Your final output must be a single JSON object with three keys: `easy`, `moderate`, and `advanced`.
 
