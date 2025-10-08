@@ -37,14 +37,18 @@ public class Program
 
     public static async Task Main(string[] args)
     {
-        var builder = Host.CreateApplicationBuilder(args);
-        // Mac では、これがないと appsettings.json が見つからないことがある。
-        builder.Configuration.SetBasePath(AppPath.ExecutableDirectory);
+        var builder = Host.CreateApplicationBuilder(new HostApplicationBuilderSettings
+        {
+            Args = args,
+            ContentRootPath = AppPath.ExecutableDirectory
+        });
+
 #if DEBUG
         // 型 Program は、.csproj ファイルを特定し、UserSecretsId を探すことに使われる。
         // 同じアセンブリーに含まれる型ならなんでもよいとのこと。
         builder.Configuration.AddUserSecrets<Program>();
 #endif
+
         // =============================================================================
 
         // Serilogの手動セットアップ（ファイルロギング用）
@@ -56,6 +60,7 @@ public class Program
         // コードの後半では Log.Error などを使っていて、たぶん動作は今と同じだったが、DI の徹底により派生開発耐性をつける今の手法とは違った。
 
         var serilogLogger = new LoggerConfiguration()
+
 #if DEBUG
             // やりとりした JSON が LogTrace により出力される。
             // Serilog には Verbose が、Microsoft の LogLevel には Trace がある。
@@ -65,6 +70,7 @@ public class Program
 #else
             .MinimumLevel.Information()
 #endif
+
             .WriteTo.Console(restrictedToMinimumLevel: LogEventLevel.Warning)
             .WriteTo.File(logFilePath)
             .CreateLogger();

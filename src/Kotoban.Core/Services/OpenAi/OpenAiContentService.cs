@@ -166,9 +166,11 @@ public class OpenAiContentService : IAiContentService
         var imageBytes = stream.ToArray();
         headers.TryGetValue("Content-Type", out var contentTypeValues);
         var contentType = contentTypeValues?.FirstOrDefault();
+
 #if DEBUG
         await _actionDispatcher.InvokeAsync("trace", "image-content-type", contentType ?? "(null)");
 #endif
+
         // 判別できなければ、.png にフォールバックする。
         var extension = WebUtils.GetImageFileExtensionFromContentType(contentType);
 

@@ -22,7 +22,7 @@ public static class AppPath
     /// <summary>
     /// 実行可能ファイルが存在するディレクトリの完全パスを取得します。
     /// </summary>
-    public static string ExecutableDirectory { get; } = Path.GetDirectoryName(ExecutablePath) ?? Environment.CurrentDirectory;
+    public static string ExecutableDirectory { get; } = Path.GetDirectoryName(ExecutablePath) ?? AppContext.BaseDirectory;
 
     /// <summary>
     /// 実行可能ファイルのディレクトリからの相対パスを絶対パスに変換します。
