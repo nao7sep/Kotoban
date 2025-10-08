@@ -37,6 +37,20 @@ public class Program
 
     public static async Task Main(string[] args)
     {
+        // Windows では、VSC での起動でも Explorer でのダブルクリックでの起動でも、カレントディレクトリーが実行ファイルのあるディレクトリーになる。
+        // Mac では、前者は大丈夫だが、Finder でのダブルクリックや dotnet コマンドでの起動では、カレントディレクトリーがユーザーのホームディレクトリーになり、
+        // builder.Configuration での相対パスの解決がうまくいかず、appsettings.json が見つからないことがある。
+        //
+        // builder.Configuration.SetBasePath(AppPath.ExecutableDirectory) では、うまくいかない。
+        // おそらく、内部で IConfigurationBuilder.AddJsonFile が呼ばれた時点で、すでにパスのマッピングが終わっている。
+        // builder.Configuration.Sources.Clear しての再構築という方法もあるが、今のところは ContentRootPath で足りている。
+        // Host.CreateApplicationBuilder を使わない方法もあるが、その場合、「だいたいいつもこういう感じ」という組み立てを自分でやることになる。
+        //
+        // Environment.CurrentDirectory を最初に更新するのが一番シンプルだが、
+        // args として与えられる全ての相対パスの意味が変わるため、一番やってはいけないことだろう。
+        // あえて別のディレクトリーからフルパスでこのアプリが実行されて、そこに相対パスでファイルが指定されたとするなら、
+        // ユーザーの意図は、その別のディレクトリーをカレントディレクトリーとしてのファイルの指定だ。
+
         var builder = Host.CreateApplicationBuilder(new HostApplicationBuilderSettings
         {
             Args = args,
