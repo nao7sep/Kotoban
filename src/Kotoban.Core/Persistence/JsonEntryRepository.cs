@@ -92,31 +92,29 @@ namespace Kotoban.Core.Persistence
 
             _jsonOptions = new JsonSerializerOptions
             {
-                // 誰にも送信しないデータなので、データ量の節約だったり、
-                // null にしてデフォルト値にフォールバックさせたりは、ここでは不要。
+                // データ整合性を維持するため、null 値もシリアライズします。
                 // DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
 
-                // こうしておかないと、ローカルで差分を取るのが絶望的に。
+                // 非ASCII文字をエスケープせず、可読性を高めます。
                 Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
 
-                // 同じく差分の取りやすさのため。
+                // JSON出力を整形し、バージョン管理システムでの差分比較を容易にします。
                 WriteIndented = true
             };
 
-            // ここで JsonStringEnumConverter を追加するのは、2つの理由からです。
-            // 1. Entry モデル内の全ての enum (Status プロパティと Explanations ディクショナリのキーである ExplanationLevel) を文字列としてシリアライズ/デシリアライズするため。
-            // 2. モデルクラス自体に特定のシリアライズ形式 (JSON) の詳細が漏れ出すのを防ぎ、関心の分離を維持するため。
+            // モデルの関心の分離を維持しつつ、enumを文字列としてシリアライズするためにコンバータを追加します。
             _jsonOptions.Converters.Add(new JsonStringEnumConverter());
             _jsonOptions.Converters.Add(new MultilineStringConverter());
 
-            // コンストラクターを async にできないので、今後は外側でこれを呼び出す。
+            // 非同期のコンストラクターはC#の言語仕様としてサポートされていないため、
+            // データロードは外部から明示的に呼び出す必要があります。
             // LoadDataAsync();
         }
 
         /// <summary>
         /// ファイルからデータをロードし、作成日時でソートします。
         /// </summary>
-        public async Task LoadDataAsync()
+        public async Task LoadDataAsync(CancellationToken cancellationToken = default)
         {
             if (!File.Exists(DataFile))
             {
@@ -124,16 +122,12 @@ namespace Kotoban.Core.Persistence
                 return;
             }
 
-            var json = await File.ReadAllTextAsync(DataFile, Encoding.UTF8);
+            var json = await File.ReadAllTextAsync(DataFile, Encoding.UTF8, cancellationToken).ConfigureAwait(false);
 
             // ファイルが空、空白、またはJSONリテラルの "null" の場合、
             // 新しい空のリストとして扱います。
-
-            // 分かりにくい AI コメントなので追記: JSON リテラルの "null" は、デシリアライズ時に、構造を持つ JSON でなく単一の「値」として null になる。
-            // Serialize/Deserialize は、カルチャーの影響を受けないラウンドトリップのメソッドとして、JSON 外のコンテキストでも使われつつある。
-            // 入力が空白系文字列でなく null が戻ったなら、"null" だったと考えてよい。
-            // それ以外の、しっかりと壊れている JSON なら、JsonException が投げられる。
-
+            // "null" リテラルは、デシリアライズされると単一のnull値になります。
+            // 不正な形式のJSONが指定された場合は、JsonExceptionがスローされます。
             if (string.IsNullOrWhiteSpace(json))
             {
                 _items = new List<Entry>();
@@ -150,7 +144,7 @@ namespace Kotoban.Core.Persistence
         /// メモリ内のデータをソートしてファイルに非同期で保存します。
         /// アトミックな保存操作のため、一時ファイルを使用します。
         /// </summary>
-        private async Task SaveDataAsync()
+        private async Task SaveDataAsync(CancellationToken cancellationToken = default)
         {
             var exceptions = new List<Exception>();
 
@@ -163,15 +157,15 @@ namespace Kotoban.Core.Persistence
                     {
                         Directory.CreateDirectory(BackupDirectory);
 
-                        // 1秒に2回以上のバックアップが行われるケースを想定しにくいので、タイムスタンプの精度はこれで十分。
-                        // 万が一にもそういうことがあったなら、差分がなく無意味なバックアップだろうし、上書き保存なのでたぶん落ちない。
+                        // タイムスタンプの競合は稀であり、発生した場合でも差分がないため、
+                        // 現在のタイムスタンプ精度で十分です。
                         var timestamp = DateTimeUtils.UtcNowTimestamp();
                         var originalFileNameWithoutExtension = Path.GetFileNameWithoutExtension(DataFile);
-                        // バックアップディレクトリに保存するので、拡張子を .bak などにしない。
+                        // バックアップファイルは元の拡張子を維持します。
                         var backupFileName = $"{originalFileNameWithoutExtension}-{timestamp}.json";
                         var backupPath = Path.Combine(BackupDirectory, backupFileName);
 
-                        await FileUtils.CopyAsync(DataFile, backupPath, true);
+                        await FileUtils.CopyAsync(DataFile, backupPath, true, cancellationToken).ConfigureAwait(false);
                     }
                 }
                 catch (Exception ex)
@@ -194,7 +188,7 @@ namespace Kotoban.Core.Persistence
                 try
                 {
                     // 一時ファイルにデータを書き込み
-                    await File.WriteAllTextAsync(tempFile, json, Encoding.UTF8);
+                    await File.WriteAllTextAsync(tempFile, json, Encoding.UTF8, cancellationToken).ConfigureAwait(false);
 
                     // 書き込みが成功したら、元ファイルを削除して一時ファイルをリネーム
                     // これによりアトミックな置き換えを実現
@@ -271,46 +265,46 @@ namespace Kotoban.Core.Persistence
         }
 
         /// <inheritdoc />
-        public Task<IEnumerable<Entry>> GetAllAsync(EntryStatus? status = null)
+        public Task<IEnumerable<Entry>> GetAllAsync(EntryStatus? status = null, CancellationToken cancellationToken = default)
         {
-            // JSON では _items に全データが入っているので Get* で絞り込んでも意味がない。
-            // ワークフローを考え、また、SQL もゆるく想定するなら、状態による絞り込みは、少なくとも SQL では効果的。
+            // この実装は全データをメモリ内でフィルタリングしますが、
+            // SQLなど他の永続化層では、この絞り込みがパフォーマンスに寄与する可能性があります。
             var items = status.HasValue ? _items.Where(i => i.Status == status.Value) : _items;
             return Task.FromResult(items);
         }
 
         /// <inheritdoc />
-        public Task<Entry?> GetByIdAsync(Guid id)
+        public Task<Entry?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
         {
-            // "Get"操作では、項目が見つからないことは例外的な状況ではありません。
-            // 呼び出し元が存在を確認できるように、nullを返します。
+            // "Get"操作において項目が見つからないのは通常の動作であり、例外ではありません。
+            // 呼び出し元が存在を確認できるよう、nullを返します。
             var item = _items.FirstOrDefault(i => i.Id == id);
             return Task.FromResult(item);
         }
 
         /// <inheritdoc />
-        public async Task AddAsync(Entry item)
+        public async Task AddAsync(Entry item, CancellationToken cancellationToken = default)
         {
             if (item.Id != Guid.Empty)
             {
-                // SQL 系のデータベースで auto-incremented な ID のところに INSERT コマンドで値を指定するとエラーになりうることを参考に。
-                // 指定の必要のない GUID を指定するのは、判明すれば2秒で直せる実装ミスなので、厳しめに対応。
+                // データベースの自動インクリメントIDと同様に、
+                // 新規追加される項目にはIDが事前に割り当てられていてはなりません。
                 throw new InvalidOperationException("Cannot add an entry that already has an ID.");
             }
 
             item.Id = Guid.NewGuid();
             _items.Add(item);
-            await SaveDataAsync();
+            await SaveDataAsync(cancellationToken).ConfigureAwait(false);
         }
 
         /// <inheritdoc />
-        public async Task UpdateAsync(Entry item)
+        public async Task UpdateAsync(Entry item, CancellationToken cancellationToken = default)
         {
             var index = _items.FindIndex(i => i.Id == item.Id);
             if (index != -1)
             {
                 _items[index] = item;
-                await SaveDataAsync();
+                await SaveDataAsync(cancellationToken).ConfigureAwait(false);
             }
             else
             {
@@ -319,13 +313,13 @@ namespace Kotoban.Core.Persistence
         }
 
         /// <inheritdoc />
-        public async Task DeleteAsync(Guid id)
+        public async Task DeleteAsync(Guid id, CancellationToken cancellationToken = default)
         {
             var item = _items.FirstOrDefault(i => i.Id == id);
             if (item != null)
             {
                 _items.Remove(item);
-                await SaveDataAsync();
+                await SaveDataAsync(cancellationToken).ConfigureAwait(false);
             }
             else
             {

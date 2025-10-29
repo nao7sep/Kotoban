@@ -29,24 +29,18 @@ namespace Kotoban.Core.Utils
 
                 if (trimmedLine.Length == 0)
                 {
-                    if (!foundMeaningfulLine)
+                    if (foundMeaningfulLine)
                     {
-                        // 意味のある行が現れる前の意味のない行は無視される
-                    }
-
-                    else
-                    {
-                        // 空行が見つかったことを記録。
-                        // 次に意味のある行が現れたときに空行を一つだけ追加する。
+                        // 意味のある行が出現した後に初めて空行を記録する
                         foundEmptyLine = true;
                     }
+                    // else: 先頭の空行は無視する
                 }
-
                 else
                 {
                     if (foundEmptyLine)
                     {
-                        // 直前の空行が記録されていれば、一つだけ追加する。
+                        // 直前に記録された空行があれば、ここで一度だけ出力する
                         yield return string.Empty;
                         foundEmptyLine = false;
                     }

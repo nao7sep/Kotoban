@@ -22,13 +22,11 @@ namespace Kotoban.Core.Services.OpenAi
         /// </summary>
         public string ImageModel { get; }
 
-        // ここに ChatRequestAdditionalData と ImageRequestAdditionalData を追加し、
-        // appsettings.json から OpenAiSettings 経由で受け取るようにしたが、
-        // Microsoft.Extensions.Configuration.Binder では Dictionary の値の型が string になるようで、
-        // それを serialize して API に送ったところ、decimal や integer が必要なのに、のエラーが出た。
-        // Binder は、deserialize 先に型情報があれば変換してくれるそうだが、object では勝手に string にしてしまう。
-        // *AdditionalData のみ個別に読み込んでまで実現したいほどの機能でもないので、今回は見送る。
-        // appsettings.json を Binder で扱うにおける問題に気づけたのは収穫。
+        // `appsettings.json` から `Dictionary<string, object>` 型のプロパティ（例: ChatRequestAdditionalData）をバインドする際、
+        // `Microsoft.Extensions.Configuration.Binder` は数値や真偽値などのJSONプリミティブ型を `string` として読み込んでしまいます。
+        // これにより、OpenAI API へのリクエスト時に型不一致のエラーが発生しました。
+        // この問題を回避するには、対象のオブジェクトを個別にデシリアライズするなどの追加処理が必要になりますが、
+        // その複雑さに見合うほどのメリットがないため、現在は `additionalData` を外部設定から読み込む機能は実装していません。
 
         /// <summary>
         /// DI された設定から新しいインスタンスを生成します。

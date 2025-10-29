@@ -17,7 +17,7 @@ namespace Kotoban.Core.Services.OpenAi
         private readonly OpenAiNetworkSettings _networkSettings;
 
         /// <summary>
-        /// DI 用コンストラクタ。
+        /// 依存性注入（DI）によってインスタンスを生成するためのコンストラクタです。
         /// </summary>
         /// <param name="httpClientFactory">HttpClient ファクトリ</param>
         /// <param name="networkSettings">ネットワーク設定</param>
@@ -118,8 +118,10 @@ namespace Kotoban.Core.Services.OpenAi
                 message.Headers.Add("Authorization", $"Bearer {transport.ApiKey}");
             }
 
+            // 呼び出し元から渡されたキャンセルトークンと、このメソッド内部のタイムアウト用トークンをリンクさせます。
+            // これにより、外部からのキャンセル要求、またはタイムアウトのいずれかが発生した時点で、
+            // 即座にリクエストをキャンセルできます。
             using var cts = cancellationToken.HasValue
-                // CreateLinkedTokenSource については、GetChatResponseAsync のところに。
                 ? CancellationTokenSource.CreateLinkedTokenSource(cancellationToken.Value)
                 : new CancellationTokenSource(_networkSettings.Timeout);
             var token = cts.Token;

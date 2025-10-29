@@ -62,8 +62,8 @@ namespace Kotoban.Core.Services.OpenAi
 
             await _actionDispatcher.InvokeAsync("trace", "prompt", prompt);
 
-            // Structured Outputs 用の response_format を匿名型でセット
-            // 次のページで Manual schema をクリックし、Step 2: Supply your schema in the API call を開いたところの例が分かりやすい。
+            // OpenAI の "Structured Outputs" 機能を利用するため、`response_format` パラメータに JSON スキーマを定義します。
+            // スキーマの詳細は OpenAI の公式ドキュメントを参照してください。
             // https://platform.openai.com/docs/guides/structured-outputs?example=structured-data
             var responseFormat = new
             {
@@ -82,11 +82,10 @@ namespace Kotoban.Core.Services.OpenAi
                             advanced = new { type = "string" }
                         },
                         required = new[] { "easy", "moderate", "advanced" },
-                        // 久～しぶりに、小一時間、コーディングにつまった。
-                        // これを送っていたのに、API から「additionalProperties がない」というエラーメッセージをもらった。
-                        // これだけが _ により snake_case になってい「ない」ことになかなか気づけなかった。
-                        // 解決策として、PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower の指定をやめて、
-                        // OpenAI の API と関わりのある全てのドメインモデルに JsonPropertyName 属性をつけた。
+                        // `additionalProperties` は、OpenAI API のスキーマ定義において厳密なキャメルケースが要求されるプロパティです。
+                        // 当初、`JsonNamingPolicy.SnakeCaseLower` をグローバルに適用していたため、このプロパティが `additional_properties` に変換され、API エラーが発生していました。
+                        // この問題を解決するため、グローバルな命名規則の適用を中止し、
+                        // 代わりに各 DTO のプロパティに `[JsonPropertyName]` 属性を個別に付与するアプローチに変更しました。
                         additionalProperties = false
                     }
                 }

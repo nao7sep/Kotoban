@@ -90,10 +90,10 @@ namespace Kotoban.Core.Services
             var currentImagePath = Path.Combine(FinalImageDirectory, entry.ImageFileName);
             if (!File.Exists(currentImagePath))
             {
-                // その後すぐ画像をつくることが多いのでなんとかなりそうだし、
-                // 例外を投げてしまうことで後続の処理に進めず、上書きで直るものも直らなくなってしまう。
-                // しかし、データの整合性が失われているのは事実であり、厳密にやっていくなら見逃してはいけないこと。
-                // まずは投げておき、しばらくアプリを使い、この例外が飛んでくるなら、原因をつぶしたい。
+                // データの整合性が失われているため、本来はエラーとして処理すべき状況です。
+                // しかし、この直後に新しい画像を生成して上書きするワークフローが多いため、
+                // ここで例外を投げると、正常な回復処理を妨げてしまう可能性があります。
+                // ログには記録し、開発中にこの問題が頻発するようであれば、根本的な原因を調査する必要があります。
                 throw new FileNotFoundException($"Final image file not found: {currentImagePath}");
             }
 
@@ -111,7 +111,8 @@ namespace Kotoban.Core.Services
             {
                 FileName = tempFileName,
                 ImageContext = entry.ImageContext,
-                // これも落とすほどでないが、null だと何かがおかしいのは間違いないので。
+                // 既存の画像データであるため、ImageGeneratedAtUtc は null であってはなりません。
+                // null の場合はデータ不整合を示唆するため、InvalidOperationException をスローします。
                 GeneratedAtUtc = entry.ImageGeneratedAtUtc ?? throw new InvalidOperationException("ImageGeneratedAtUtc is null"),
                 ImagePrompt = entry.ImagePrompt
             };
@@ -160,7 +161,7 @@ namespace Kotoban.Core.Services
             var finalFileName = string.Format(_settings.FinalImageFileNamePattern, entry.Id, extension);
             var finalImagePath = Path.Combine(FinalImageDirectory, finalFileName);
 
-            // ドライブをまたぐなどしなければ一瞬で終わるだろうから、非同期化は不要。
+            // 同一ドライブ内のファイル移動は高速に完了するため、同期的に処理します。
             File.Move(tempImagePath, finalImagePath, overwrite: true);
 
             return Task.FromResult(finalFileName);
@@ -181,8 +182,7 @@ namespace Kotoban.Core.Services
 
             if (entryId.HasValue)
             {
-                // 両方を小文字にしてからの比較の方が微妙に速いかもしれないが、
-                // 個人的な好みとして、僅差なら、できるだけ動的（？）に実装したい。
+                // 大文字と小文字を区別せずに、ファイル名が entryId で始まるファイルを対象とします。
                 var entryIdString = entryId.Value.ToString();
                 files = files.Where(f => Path.GetFileName(f).StartsWith(entryIdString, StringComparison.OrdinalIgnoreCase)).ToArray();
             }
@@ -204,15 +204,10 @@ namespace Kotoban.Core.Services
 
             foreach (var file in files)
             {
-                // 画像のプレビューに使っているアプリが画像をロックしていれば、ここではふつうに例外が飛ぶ。
-                // ここで「消せません」を表示して、再試行かキャンセルかを選んでもらうなどは、
-                // ユーザービリティーを大きく高めない一方で、ライブラリーの設計を崩す。
-                //
-                // というのも、このクラスは UI から separate されているもので、
-                // SoC を保ったまま UI ロジックを入れるとなると、
-                // こちらのコードを複数のメソッドに細分化した上で Program.cs のコードと癒着させることになる。
-                //
-                // 次善策として、起こりえない例外およびユーザーの正常な操作に起因する例外のみ抑制する。
+                // ファイルが他のプロセスによってロックされている場合、IOException が発生する可能性があります。
+                // このメソッドはUIと分離されており、ユーザーに再試行を促すなどの対話ができないため、
+                // 想定される一部の例外を抑制し、処理を継続します。
+                // クリーンアップはベストエフォートで実行され、失敗したファイルは次回の実行時に再試行されることを期待します。
 
                 try
                 {
@@ -220,21 +215,19 @@ namespace Kotoban.Core.Services
                 }
                 catch (DirectoryNotFoundException)
                 {
-                    // ディレクトリーがなければ、削除のプロセスに入らないはず。
+                    // ディレクトリが存在しない場合、GetFiles でファイルが返されないため、この例外は発生しないはずです。
                 }
                 catch (FileNotFoundException)
                 {
-                    // ファイルがなければ、Directory.GetFiles で得られないはず。
+                    // GetFiles で取得したファイルが存在しない場合、この例外は発生しないはずです。
                 }
                 catch (UnauthorizedAccessException)
                 {
-                    // 権限の関係で消せないなら、そもそもつくれなかったはず。
+                    // ファイルへのアクセス権がない場合、通常はファイルの作成もできないため、この例外は発生しないはずです。
                 }
                 catch (IOException)
                 {
-                    // ほかのアプリが開いているなどで消せないなら、いったんスルー。
-                    // ユーザーがそのうち気づき、使うアプリをかえるとか、ワークフローをかえるとかを期待。
-                    // プログラム終了時にもクリーンアップが行われるだろうから、累積的な問題にはならないはず。
+                    // 他のプロセスがファイルをロックしている場合など、一時的なファイルアクセスの問題は無視します。
                 }
             }
 

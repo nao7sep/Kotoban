@@ -25,27 +25,20 @@ namespace Kotoban.Core.Services.OpenAi
         {
             BaseRequestSerializationOptions = new JsonSerializerOptions
             {
-                // API に送るデータなので、少しでも小さく。
-                // null まみれのデータだと、かなり大きな差になる。
+                // null 値を持つプロパティをシリアライズから除外することで、ペイロードのサイズを削減します。
                 DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
 
-                // API に送るだけのもので、自分が見ることは稀。
-                // Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+                // structured model outputs 機能では、`additionalProperties` という厳密なキー名が要求されます。
+                // しかし、`PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower` を設定すると、このキーが `additional_properties` に変換されてしまい、API エラーを引き起こします。
+                // この問題を回避するため、`PropertyNamingPolicy` は設定せず、代わりに各プロパティに `[JsonPropertyName]` 属性を明示的に付与しています。
 
-                // structured model outputs には、additionalProperties というパラメーターが必要。
-                // これは、_ が含まれていたり、大文字・小文字が違っていたりだと認識されない。
-                // これに対応するため、全てのプロパティーに JsonPropertyName 属性をつけた。
-                // PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
-
-                // 自分が見ることは稀だが、リクエストもレスポンスもトレースに入るので、
-                // 書式化されている方が、複雑な構造のデータを送るときにデバッグしやすい。
+                // デバッグ時の可読性を向上させるため、JSON をインデントして出力します。
                 WriteIndented = true
             };
 
             BaseResponseDeserializationOptions = new JsonSerializerOptions
             {
-                // BaseRequestSerializationOptions と同じ理由で、あっては柔軟性が下がる。
-                // PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower
+                // リクエストと同様の理由で、`PropertyNamingPolicy` は設定しません。
             };
         }
     }

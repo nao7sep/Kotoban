@@ -32,15 +32,12 @@ namespace Kotoban.Core.Utils
         /// <returns>ドット付きのファイル拡張子（例: ".png"）</returns>
         public static string GetImageFileExtensionFromContentType(string? contentType, string fallbackExtension = ".png")
         {
-            // Content-Typeがnullや空文字の場合はフォールバック拡張子を返す
             if (string.IsNullOrWhiteSpace(contentType))
                 return fallbackExtension;
 
-            // 対応していれば拡張子を返す
             if (ImageContentTypeToExtensionMap.TryGetValue(contentType, out var ext))
                 return ext;
 
-            // 未対応の場合はフォールバック拡張子を返す
             return fallbackExtension;
         }
     }

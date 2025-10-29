@@ -59,7 +59,8 @@ namespace Kotoban.Core.Services
         /// <returns>説明文生成用プロンプトフォーマットの文字列。</returns>
         public async Task<string> GetExplanationPromptFormatAsync()
         {
-            // キャッシュも考えたが、ワークフロー的には、プログラム実行中のプロンプト更新をできた方が圧倒的に便利。
+            // 開発中の利便性を考慮し、プロンプトファイルはキャッシュせず、常にファイルから直接読み込みます。
+            // これにより、アプリケーションを再起動することなくプロンプトの変更を即座に反映できます。
             return await File.ReadAllTextAsync(ExplanationPromptFormatFile, Encoding.UTF8);
         }
 
@@ -69,7 +70,8 @@ namespace Kotoban.Core.Services
         /// <returns>画像生成用プロンプトフォーマットの文字列。</returns>
         public async Task<string> GetImagePromptFormatAsync()
         {
-            // キャッシュも考えたが、ワークフロー的には、プログラム実行中のプロンプト更新をできた方が圧倒的に便利。
+            // 開発中の利便性を考慮し、プロンプトファイルはキャッシュせず、常にファイルから直接読み込みます。
+            // これにより、アプリケーションを再起動することなくプロンプトの変更を即座に反映できます。
             return await File.ReadAllTextAsync(ImagePromptFormatFile, Encoding.UTF8);
         }
     }

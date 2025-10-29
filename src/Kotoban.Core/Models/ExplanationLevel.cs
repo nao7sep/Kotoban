@@ -1,22 +1,22 @@
 namespace Kotoban.Core.Models
 {
     /// <summary>
-    /// 説明の難易度を定義するための列挙型。
+    /// 説明の難易度を定義します。
     /// </summary>
     public enum ExplanationLevel
     {
         /// <summary>
-        /// 未就学児・低学年向け（例：ひらがな/カタカナのみ）。
+        /// 幼児・小学校低学年レベル。
         /// </summary>
         Easy,
 
         /// <summary>
-        /// 高学年向け（例：小学校で習う漢字を含む）。
+        /// 小学校高学年レベル。
         /// </summary>
         Moderate,
 
         /// <summary>
-        /// 中学生以上向け（例：常用漢字を含む）。
+        /// 中学生以上レベル。
         /// </summary>
         Advanced
     }
