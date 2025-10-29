@@ -1,30 +1,31 @@
 using System;
 
-namespace Kotoban.Core.Models;
-
-/// <summary>
-/// 生成された画像の情報を表します。
-/// </summary>
-public class SavedImage
+namespace Kotoban.Core.Models
 {
     /// <summary>
-    /// 画像ファイル名（拡張子付き）。
-    /// 画像ディレクトリに保存されるファイル名のみを格納します。
+    /// 生成された画像の情報を表します。
     /// </summary>
-    public string FileName { get; set; } = string.Empty;
+    public class SavedImage
+    {
+        /// <summary>
+        /// 画像ファイル名（拡張子付き）。
+        /// 画像ディレクトリに保存されるファイル名のみを格納します。
+        /// </summary>
+        public string FileName { get; set; } = string.Empty;
 
-    /// <summary>
-    /// 画像生成用のコンテキスト。
-    /// </summary>
-    public string? ImageContext { get; set; }
+        /// <summary>
+        /// 画像生成用のコンテキスト。
+        /// </summary>
+        public string? ImageContext { get; set; }
 
-    /// <summary>
-    /// 画像生成が完了したUTCタイムスタンプ。
-    /// </summary>
-    public DateTime GeneratedAtUtc { get; set; }
+        /// <summary>
+        /// 画像生成が完了したUTCタイムスタンプ。
+        /// </summary>
+        public DateTime GeneratedAtUtc { get; set; }
 
-    /// <summary>
-    /// AIが画像を生成した際に返された、画像を再現するためのプロンプト。
-    /// </summary>
-    public string? ImagePrompt { get; set; }
+        /// <summary>
+        /// AIが画像を生成した際に返された、画像を再現するためのプロンプト。
+        /// </summary>
+        public string? ImagePrompt { get; set; }
+    }
 }

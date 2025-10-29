@@ -3,38 +3,39 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Kotoban.Core.Services.OpenAi.Models;
 
-namespace Kotoban.Core.Services.OpenAi;
-
-/// <summary>
-/// OpenAiChatRequest の AdditionalData をフラット化するためのカスタム JsonConverter です。
-/// </summary>
-public class OpenAiChatRequestConverter : JsonConverter<OpenAiChatRequest>
+namespace Kotoban.Core.Services.OpenAi
 {
-    public override void Write(Utf8JsonWriter writer, OpenAiChatRequest value, JsonSerializerOptions options)
+    /// <summary>
+    /// OpenAiChatRequest の AdditionalData をフラット化するためのカスタム JsonConverter です。
+    /// </summary>
+    public class OpenAiChatRequestConverter : JsonConverter<OpenAiChatRequest>
     {
-        writer.WriteStartObject();
-
-        // 標準プロパティをシリアライズ
-        writer.WriteString("model", value.Model);
-        writer.WritePropertyName("messages");
-        JsonSerializer.Serialize(writer, value.Messages, options);
-
-        // AdditionalData をフラット化
-        if (value.AdditionalData != null)
+        public override void Write(Utf8JsonWriter writer, OpenAiChatRequest value, JsonSerializerOptions options)
         {
-            foreach (var (key, val) in value.AdditionalData)
+            writer.WriteStartObject();
+
+            // 標準プロパティをシリアライズ
+            writer.WriteString("model", value.Model);
+            writer.WritePropertyName("messages");
+            JsonSerializer.Serialize(writer, value.Messages, options);
+
+            // AdditionalData をフラット化
+            if (value.AdditionalData != null)
             {
-                writer.WritePropertyName(key);
-                JsonSerializer.Serialize(writer, val, options);
+                foreach (var (key, val) in value.AdditionalData)
+                {
+                    writer.WritePropertyName(key);
+                    JsonSerializer.Serialize(writer, val, options);
+                }
             }
+
+            writer.WriteEndObject();
         }
 
-        writer.WriteEndObject();
-    }
-
-    public override OpenAiChatRequest Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
-    {
-        // このコンバーターはシリアライズ専用です。
-        throw new NotImplementedException();
+        public override OpenAiChatRequest Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        {
+            // このコンバーターはシリアライズ専用です。
+            throw new NotImplementedException();
+        }
     }
 }

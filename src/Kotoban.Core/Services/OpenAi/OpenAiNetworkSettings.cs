@@ -1,28 +1,29 @@
 ﻿using System;
 
-namespace Kotoban.Core.Services.OpenAi;
-
-/// <summary>
-/// OpenAI API へのアクセスに関するネットワーク設定を管理します。
-/// </summary>
-public class OpenAiNetworkSettings
+namespace Kotoban.Core.Services.OpenAi
 {
     /// <summary>
-    /// OpenAI API の設定。
+    /// OpenAI API へのアクセスに関するネットワーク設定を管理します。
     /// </summary>
-    private readonly OpenAiSettings _settings;
-
-    /// <summary>
-    /// OpenAI API リクエストのデフォルトタイムアウト時間。
-    /// </summary>
-    public TimeSpan Timeout { get; }
-
-    /// <summary>
-    /// DI用: OpenAiSettings からタイムアウト値を取得して初期化します。
-    /// </summary>
-    public OpenAiNetworkSettings(OpenAiSettings settings)
+    public class OpenAiNetworkSettings
     {
-        _settings = settings;
-        Timeout = _settings.Timeout;
+        /// <summary>
+        /// OpenAI API の設定。
+        /// </summary>
+        private readonly OpenAiSettings _settings;
+
+        /// <summary>
+        /// OpenAI API リクエストのデフォルトタイムアウト時間。
+        /// </summary>
+        public TimeSpan Timeout { get; }
+
+        /// <summary>
+        /// DI用: OpenAiSettings からタイムアウト値を取得して初期化します。
+        /// </summary>
+        public OpenAiNetworkSettings(OpenAiSettings settings)
+        {
+            _settings = settings;
+            Timeout = _settings.Timeout;
+        }
     }
 }

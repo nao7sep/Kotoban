@@ -3,62 +3,63 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Kotoban.Core.Services.OpenAi.Models;
 
-namespace Kotoban.Core.Services.OpenAi;
-
-/// <summary>
-/// OpenAiImageRequest の AdditionalData をフラット化するためのカスタム JsonConverter です。
-/// </summary>
-public class OpenAiImageRequestConverter : JsonConverter<OpenAiImageRequest>
+namespace Kotoban.Core.Services.OpenAi
 {
-    public override void Write(Utf8JsonWriter writer, OpenAiImageRequest value, JsonSerializerOptions options)
+    /// <summary>
+    /// OpenAiImageRequest の AdditionalData をフラット化するためのカスタム JsonConverter です。
+    /// </summary>
+    public class OpenAiImageRequestConverter : JsonConverter<OpenAiImageRequest>
     {
-        writer.WriteStartObject();
-
-        // 標準プロパティをシリアライズ
-        writer.WriteString("model", value.Model);
-        writer.WriteString("prompt", value.Prompt);
-
-        if (value.N.HasValue)
+        public override void Write(Utf8JsonWriter writer, OpenAiImageRequest value, JsonSerializerOptions options)
         {
-            writer.WriteNumber("n", value.N.Value);
-        }
+            writer.WriteStartObject();
 
-        if (value.Quality != null)
-        {
-            writer.WriteString("quality", value.Quality);
-        }
+            // 標準プロパティをシリアライズ
+            writer.WriteString("model", value.Model);
+            writer.WriteString("prompt", value.Prompt);
 
-        if (value.Size != null)
-        {
-            writer.WriteString("size", value.Size);
-        }
-
-        if (value.Style != null)
-        {
-            writer.WriteString("style", value.Style);
-        }
-
-        if (value.ResponseFormat != null)
-        {
-            writer.WriteString("response_format", value.ResponseFormat);
-        }
-
-        // AdditionalData をフラット化
-        if (value.AdditionalData != null)
-        {
-            foreach (var (key, val) in value.AdditionalData)
+            if (value.N.HasValue)
             {
-                writer.WritePropertyName(key);
-                JsonSerializer.Serialize(writer, val, options);
+                writer.WriteNumber("n", value.N.Value);
             }
+
+            if (value.Quality != null)
+            {
+                writer.WriteString("quality", value.Quality);
+            }
+
+            if (value.Size != null)
+            {
+                writer.WriteString("size", value.Size);
+            }
+
+            if (value.Style != null)
+            {
+                writer.WriteString("style", value.Style);
+            }
+
+            if (value.ResponseFormat != null)
+            {
+                writer.WriteString("response_format", value.ResponseFormat);
+            }
+
+            // AdditionalData をフラット化
+            if (value.AdditionalData != null)
+            {
+                foreach (var (key, val) in value.AdditionalData)
+                {
+                    writer.WritePropertyName(key);
+                    JsonSerializer.Serialize(writer, val, options);
+                }
+            }
+
+            writer.WriteEndObject();
         }
 
-        writer.WriteEndObject();
-    }
-
-    public override OpenAiImageRequest Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
-    {
-        // このコンバーターはシリアライズ専用です。
-        throw new NotImplementedException();
+        public override OpenAiImageRequest Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        {
+            // このコンバーターはシリアライズ専用です。
+            throw new NotImplementedException();
+        }
     }
 }
