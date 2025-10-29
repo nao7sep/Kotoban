@@ -429,7 +429,7 @@ namespace Kotoban.DataManager.Services
         public static async Task DeleteAiContentAsync(Entry item, IServiceProvider services, string? completionMessage)
         {
             var repository = services.GetRequiredService<IEntryRepository>();
-            // インターフェースでは FinalImageDirectory にアクセスできないため、具象クラスにキャストします。
+            // インターフェースでは FinalImageDirectory にアクセスできないため、具体的なクラスにキャストします。
             var imageManager = services.GetRequiredService<IImageManager>() as ImageManager ?? throw new InvalidOperationException("ImageManager is not available.");
 
             // 画像ファイルの物理削除

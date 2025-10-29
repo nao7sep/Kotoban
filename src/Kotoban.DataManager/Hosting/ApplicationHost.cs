@@ -104,7 +104,7 @@ namespace Kotoban.DataManager.Hosting
             // 【DI 登録パターンの使い分け】
             // - AddSingleton<I, C>(): インターフェースと実装クラスを指定、DI が自動生成
             // - AddSingleton<I>(instance): 事前に作成したインスタンスを登録
-            // - AddSingleton<C>(): 具象クラスのみを登録（インターフェースなし）
+            // - AddSingleton<C>(): 具体的なクラスのみを登録（インターフェースなし）
             //
             // 【サービス設計の原則】
             // - 設定セクションごとにドメインモデルを作成し、生データを保持
@@ -114,7 +114,7 @@ namespace Kotoban.DataManager.Hosting
             //
             // 【永続化ストレージの設計】
             // 現在は JSON のみ対応の前提で簡素化していますが、複数データソース対応の場合は
-            // IPersistentStorageSettings インターフェースと、Json/Sql 等の具象実装クラスによる
+            // IPersistentStorageSettings インターフェースと、Json/Sql 等の具体的な実装クラスによる
             // 階層化設計が適切です。
 
             var kotobanSettings = new KotobanSettings();
