@@ -1,8 +1,8 @@
 namespace Kotoban.DataManager
 {
     /// <summary>
-    /// 指定項目の AI コンテンツの状態に基づく動的メニューに使われる。
-    /// これがないと、メニュー項目の文字列での switch になる。
+    /// 指定項目のAIコンテンツの状態に基づく動的メニューに使われる列挙型。
+    /// これがないと、メニュー項目の文字列でのswitchになる。
     /// </summary>
     internal enum AiContentAction
     {
