@@ -7,10 +7,12 @@ using Kotoban.Core.Models;
 using Kotoban.Core.Persistence;
 using Kotoban.Core.Services;
 using Kotoban.Core.Services.OpenAi;
+using Kotoban.DataManager.Models;
+using Kotoban.DataManager.UI;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
-namespace Kotoban.DataManager
+namespace Kotoban.DataManager.Services
 {
     /// <summary>
     /// AIコンテンツの生成と管理を行います。

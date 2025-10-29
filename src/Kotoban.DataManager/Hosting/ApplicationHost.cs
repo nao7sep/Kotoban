@@ -13,7 +13,7 @@ using Microsoft.Extensions.Logging;
 using Serilog;
 using Serilog.Events;
 
-namespace Kotoban.DataManager
+namespace Kotoban.DataManager.Hosting
 {
     /// <summary>
     /// アプリケーションのホスト設定とサービス登録を管理します。

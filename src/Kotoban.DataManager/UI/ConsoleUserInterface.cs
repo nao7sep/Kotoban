@@ -3,7 +3,7 @@ using System.Linq;
 using Kotoban.Core.Models;
 using Kotoban.Core.Utils;
 
-namespace Kotoban.DataManager
+namespace Kotoban.DataManager.UI
 {
     /// <summary>
     /// コンソールでのユーザーインターフェース操作を管理します。

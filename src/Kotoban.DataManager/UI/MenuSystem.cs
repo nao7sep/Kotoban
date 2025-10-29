@@ -3,10 +3,12 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Kotoban.Core.Models;
 using Kotoban.Core.Services;
+using Kotoban.DataManager.Models;
+using Kotoban.DataManager.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
-namespace Kotoban.DataManager
+namespace Kotoban.DataManager.UI
 {
     /// <summary>
     /// メニューシステムとナビゲーションロジックを管理します。

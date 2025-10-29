@@ -4,9 +4,10 @@ using System.Linq;
 using System.Threading.Tasks;
 using Kotoban.Core.Models;
 using Kotoban.Core.Persistence;
+using Kotoban.DataManager.UI;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Kotoban.DataManager
+namespace Kotoban.DataManager.Services
 {
     /// <summary>
     /// 項目のCRUD操作を管理します。
