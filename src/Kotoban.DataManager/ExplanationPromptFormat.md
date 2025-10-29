@@ -2,16 +2,16 @@ You are an expert Japanese lexicographer and a skilled educator. Your mission is
 
 ### Provided Data
 
-[Reading]
+[Reading]\
 {0}
 
-[Expression]
+[Expression]\
 {1}
 
-[GeneralContext]
+[GeneralContext]\
 {2}
 
-[ExplanationContext]
+[ExplanationContext]\
 {3}
 
 ### Guiding Principles
@@ -35,14 +35,14 @@ You will generate three unique explanations in **natural-sounding Japanese**. Ea
 * Use descriptive transitions between ideas instead of numbered points
 * Write Japanese text naturally without artificial spacing between words or phrases. Japanese readers rely on kanji, context, and natural word boundaries to parse meaning, so avoid inserting spaces that would make the text appear childish or unnatural
 
-Your final output must be a single JSON object with three keys: `easy`, `moderate`, and `advanced`.
+Your final output must be a single JSON object with three keys: `Easy`, `Moderate`, and `Advanced`.
 
-* `easy`:
+* `Easy`:
     * **Audience:** Young children (~6 years old).
     * **Rules:** Use only hiragana and katakana. No kanji. The explanation must be short, concrete, and easy for a child to visualize.
     * **Format:** Exactly one paragraph that is simple and direct.
 
-* `moderate`:
+* `Moderate`:
     * **Audience:** Pre-teens (~12 years old).
     * **Rules:** Use standard kanji taught in elementary school. Provide a clear, straightforward definition with more detail than the easy level.
     * **Format:** A few paragraphs that explore the word from different angles. **Strategically select the most interesting and engaging approaches** that will captivate pre-teens and make learning memorable. Choose from these possibilities or create your own compelling angles:
@@ -56,7 +56,7 @@ Your final output must be a single JSON object with three keys: `easy`, `moderat
         * Explore its role in daily routines or activities
         * Discuss regional or generational differences in usage
 
-* `advanced`:
+* `Advanced`:
     * **Audience:** Adults and advanced learners.
     * **Rules:** Use standard Joyo kanji. Deliver an insightful explanation that is engaging even for those familiar with the word. Incorporate deeper knowledge, such as etymology, cultural significance, historical context, or subtle nuances in usage.
     * **Format:** Many paragraphs that provide comprehensive coverage from multiple fascinating perspectives. **Strategically select the most captivating and intellectually stimulating angles** that will intrigue adults and advanced learners. Choose the most interesting aspects from these possibilities or invent entirely new compelling approaches:

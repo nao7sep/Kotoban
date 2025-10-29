@@ -51,11 +51,11 @@ namespace Kotoban.Core.Models
         /// <summary>
         /// 説明文生成に使用するプロンプトフォーマットファイルのパス。
         /// </summary>
-        public string ExplanationPromptFormatFile { get; set; } = "ExplanationPromptFormat.txt";
+        public string ExplanationPromptFormatFile { get; set; } = "ExplanationPromptFormat.md";
 
         /// <summary>
         /// 画像生成に使用するプロンプトフォーマットファイルのパス。
         /// </summary>
-        public string ImagePromptFormatFile { get; set; } = "ImagePromptFormat.txt";
+        public string ImagePromptFormatFile { get; set; } = "ImagePromptFormat.md";
     }
 }

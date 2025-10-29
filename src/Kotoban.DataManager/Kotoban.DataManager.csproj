@@ -65,10 +65,10 @@
     <Content Include="appsettings.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="ExplanationPromptFormat.txt">
+    <Content Include="ExplanationPromptFormat.md">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="ImagePromptFormat.txt">
+    <Content Include="ImagePromptFormat.md">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
