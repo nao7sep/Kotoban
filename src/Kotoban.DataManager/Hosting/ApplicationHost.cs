@@ -25,19 +25,22 @@ namespace Kotoban.DataManager.Hosting
         /// </summary>
         public static async Task<IHost> CreateHostAsync(string[] args)
         {
-            // Windows では、VSC での起動でも Explorer でのダブルクリックでの起動でも、カレントディレクトリーが実行ファイルのあるディレクトリーになる。
-            // Mac では、前者は大丈夫だが、Finder でのダブルクリックや dotnet コマンドでの起動では、カレントディレクトリーがユーザーのホームディレクトリーになり、
-            // builder.Configuration での相対パスの解決がうまくいかず、appsettings.json が見つからないことがある。
+            // プラットフォーム間でのカレントディレクトリの動作差異に対応するため、
+            // ContentRootPath を実行ファイルのディレクトリに明示的に設定します。
             //
-            // builder.Configuration.SetBasePath(AppPath.ExecutableDirectory) では、うまくいかない。
-            // おそらく、内部で IConfigurationBuilder.AddJsonFile が呼ばれた時点で、すでにパスのマッピングが終わっている。
-            // builder.Configuration.Sources.Clear しての再構築という方法もあるが、今のところは ContentRootPath で足りている。
-            // Host.CreateApplicationBuilder を使わない方法もあるが、その場合、「だいたいいつもこういう感じ」という組み立てを自分でやることになる。
+            // 【プラットフォーム別の動作】
+            // - Windows: VSCode 起動・Explorer ダブルクリック共に実行ファイルディレクトリがカレント
+            // - macOS: VSCode 起動は正常だが、Finder ダブルクリック・dotnet コマンド起動では
+            //   ユーザーホームディレクトリがカレントとなり、appsettings.json の相対パス解決が失敗
             //
-            // Environment.CurrentDirectory を最初に更新するのが一番シンプルだが、
-            // args として与えられる全ての相対パスの意味が変わるため、一番やってはいけないことだろう。
-            // あえて別のディレクトリーからフルパスでこのアプリが実行されて、そこに相対パスでファイルが指定されたとするなら、
-            // ユーザーの意図は、その別のディレクトリーをカレントディレクトリーとしてのファイルの指定だ。
+            // 【採用した解決策】
+            // ContentRootPath を AppPath.ExecutableDirectory に設定することで、
+            // 設定ファイルの相対パス解決を確実に実行ファイルディレクトリ基準で行います。
+            //
+            // 【検討した他の方法】
+            // - SetBasePath(): IConfigurationBuilder.AddJsonFile 実行後では効果なし
+            // - Sources.Clear() での再構築: 可能だが複雑
+            // - Environment.CurrentDirectory 変更: コマンドライン引数の相対パス解釈に影響するため不適切
 
             var builder = Host.CreateApplicationBuilder(new HostApplicationBuilderSettings
             {
@@ -46,8 +49,8 @@ namespace Kotoban.DataManager.Hosting
             });
 
 #if DEBUG
-            // 型 Program は、.csproj ファイルを特定し、UserSecretsId を探すことに使われる。
-            // 同じアセンブリーに含まれる型ならなんでもよいとのこと。
+            // Program 型を使用して .csproj ファイルから UserSecretsId を特定します。
+            // 同一アセンブリ内の任意の型を使用可能です。
             builder.Configuration.AddUserSecrets<Program>();
 #endif
 
@@ -67,16 +70,16 @@ namespace Kotoban.DataManager.Hosting
             var logFilePath = AppPath.GetAbsolutePath(Path.Combine("Logs", $"Kotoban-{timestamp}.log"));
             DirectoryUtils.EnsureParentDirectoryExists(logFilePath);
 
-            // 蛇足コメント: Serilog についてよく知らず、Log.Logger にインスタンスをあてがっては、それをサービス登録していた。
-            // コードの後半では Log.Error などを使っていて、たぶん動作は今と同じだったが、DI の徹底により派生開発耐性をつける今の手法とは違った。
+            // Serilog ロガーインスタンスを直接作成し、DI コンテナに登録します。
+            // 静的な Log.Logger を使用する方法と比較して、DI による管理により
+            // テスト容易性と拡張性が向上します。
 
             var serilogLogger = new LoggerConfiguration()
 
 #if DEBUG
-                // やりとりした JSON が LogTrace により出力される。
-                // Serilog には Verbose が、Microsoft の LogLevel には Trace がある。
-                // Trace and Verbose are already treated as synonyms とのこと。
-                // https://github.com/serilog/serilog-extensions-logging/issues/57
+                // デバッグ時に API との JSON やりとりを LogTrace で出力するため、
+                // Verbose レベルを設定します。Serilog の Verbose と Microsoft の Trace は
+                // 同義として扱われます。
                 .MinimumLevel.Verbose()
 #else
                 .MinimumLevel.Information()
@@ -95,37 +98,24 @@ namespace Kotoban.DataManager.Hosting
         /// </summary>
         private static async Task ConfigureServicesAsync(HostApplicationBuilder builder)
         {
-            // 単一 UI に単一セットのデータが関連づけられる設計なので、そのデータもサービス登録してしまう。
-            // AI がやりだしたときには、「Program.メンバー」または「ほかのクラス.静的メンバー」でよいのではと思った。
-            // しかし、Scoped, Singleton, Transient の違いを学び、サービス登録による拡張性を理解した。
-
-            // しばらくしての追記: クラスのインスタンスを生成して Add* するもの、
-            // <インターフェース, クラス> と書くもの、<インターフェース>(インスタンス) と書くものが混在するように。
+            // アプリケーションで使用するサービスを DI コンテナに登録します。
+            // 単一 UI・単一データセットの設計のため、データもサービスとして登録しています。
             //
-            // まず <I, C> は、型指定が I でも C でも取れるインスタンスを DI により生成する。
-            // コンストラクターに必要なサービスがその時点で見つからないと、「解決できない」を旨とする例外が飛ぶ。
-            // <Int>(Ins) は、すぐに Ins を使いたいときや、その初期化を自分で行いたいときに適する。
-            // (I) だけのものは、インターフェースのあるクラスには適さない。
+            // 【DI 登録パターンの使い分け】
+            // - AddSingleton<I, C>(): インターフェースと実装クラスを指定、DI が自動生成
+            // - AddSingleton<I>(instance): 事前に作成したインスタンスを登録
+            // - AddSingleton<C>(): 具象クラスのみを登録（インターフェースなし）
             //
-            // インターフェースのあるクラスに（インターフェースにはない）固有の機能を入れて、
-            // クラスの型によりインスタンスを取得してそれらを使うのは、たぶんどこかに改善の余地がある。
-            // DataFile などが欲しくて Main メソッドではそれに近いことをしているが、
-            // どうせ DataManager では SQL データベースに対応しないだろうから、
-            // もうちょっとシンプルにつくってもよかったかもしれない。
+            // 【サービス設計の原則】
+            // - 設定セクションごとにドメインモデルを作成し、生データを保持
+            // - 実装切り替え可能なサービスにはインターフェースを定義
+            // - 全サービスを DI ベースで構築し、外部での加工済みパラメータは受け付けない
+            // - 共通性のあるデータは、即座に不要でもプロパティとして公開
             //
-            // サービス管理をやってみての教訓は、次の通り。
-            // - 設定のセクションごとにドメインモデルをつくり、そこには生データをそのまま入れておく。
-            // - 実装を切り替えうるサービスクラスなら、インターフェースをつくり、少なくともロジックは切り替えられるのを保証する。
-            // - 基本的にあらゆるサービスクラスを DI ベースでつくり、外部で加工したパラメーターを受け付けない。
-            // - それぞれのサービスクラスで加工したデータを、共益性があるなら、すぐには不要でもプロパティーとして公開する。
-            //
-            // 今回のコードは、入念にリファクタリングしたので、それなりにちゃんとした設計のはず。
-            // ただ、永続的ストレージに関するところのみ、「どうせ JSON しか対応しない」との前提で妥協している。
-            //
-            // いろいろなデータソースに対応するプロジェクトなら、たとえばバックアップ方法はそれぞれ大きく異なるだろうから、
-            // appsettings.json などには PersistentStorageSettings などをつくり、その中に Json, Sql などをつくり、
-            // IPersistentStorageSettings をつくり、JsonPersistentStorageSettings, SqlPersistentStorageSettings などを実装するのが一つの方法。
-            // Json, Sql などの上位にある共通的な項目も入れておきながらも、下位でそれぞれの値を上書きできれば、シンプルな実装で多くのことができそう。
+            // 【永続化ストレージの設計】
+            // 現在は JSON のみ対応の前提で簡素化していますが、複数データソース対応の場合は
+            // IPersistentStorageSettings インターフェースと、Json/Sql 等の具象実装クラスによる
+            // 階層化設計が適切です。
 
             var kotobanSettings = new KotobanSettings();
             builder.Configuration.GetSection("Kotoban").Bind(kotobanSettings);
@@ -162,9 +152,9 @@ namespace Kotoban.DataManager.Hosting
 
             builder.Services.AddSingleton<IAiContentService, OpenAiContentService>();
 
-            // ここで ActionDispatcher のインスタンスをつくり、action を登録し、AddSingleton することも可能だが、
-            // ILogger でも serilogLogger でもなく ILogger<ActionDispatcher> を使いたいので、RunApplicationLoop 内で。
-            // スコープを合わせたく、scopedServices を使いたいというのもある。
+            // ActionDispatcher は ILogger<ActionDispatcher> を使用するため、
+            // アクション登録は RunApplicationLoop 内で行います。
+            // これにより適切なロガーカテゴリとサービススコープを確保できます。
             builder.Services.AddSingleton<ActionDispatcher>();
         }
     }

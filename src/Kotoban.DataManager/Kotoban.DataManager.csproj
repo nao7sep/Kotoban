@@ -6,13 +6,31 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
 
-    <!-- dotnet user-secrets set "OpenAi:ApiKey" "YOUR_API_KEY" のようにして設定する。 -->
+    <!-- ユーザーシークレットは dotnet user-secrets set "OpenAi:ApiKey" "YOUR_API_KEY" で設定します。 -->
     <UserSecretsId>2fac3fd4-e9a6-4169-8442-e46875019def</UserSecretsId>
 
     <Product>Kotoban</Product>
     <!--
-      Mac で実行ファイルが生成されず微妙に困ったので、調査結果と今後の方針をまとめた。
-      https://github.com/nao7sep/coding-notes/blob/main/resolving-macos-execution-issues-with-dotted-dotnet-assembly-names.md
+      macOS での実行ファイル生成問題に関する設計方針：
+
+      【問題の概要】
+      AssemblyName を指定しない場合、プロジェクト名がバイナリファイル名に使用されます。
+      Windows では Kotoban.DataManager.exe として正常に動作しますが、
+      macOS では Kotoban.DataManager となり、ドット文字により実行ファイルとして認識されません。
+
+      【原因分析】
+      macOS の Finder は拡張子による判定を行うため、「.DataManager」が拡張子として
+      解釈され、実行ファイルのヘッダー情報を確認しません。
+      ドットを除去すると正常に実行可能ファイルとして認識されます。
+
+      【採用した解決策】
+      - AssemblyName は指定せず、.NET 標準の命名規則（ドット区切り）を維持
+      - macOS 配布時のみファイル名のドットをハイフンに置換
+      - 他の依存ファイル（Microsoft.Extensions.Logging.dll 等）との整合性を保持
+      - 将来的に問題が発生した場合はスクリプト起動に変更
+
+      この方針により、.NET エコシステムとの互換性を保ちながら
+      クロスプラットフォーム対応を実現しています。
     -->
     <AssemblyTitle>Kotoban DataManager</AssemblyTitle>
     <Description>Console application for managing Kotoban vocabulary data. Provides interactive tools for adding entries, generating AI-powered explanations and images, managing workflow states, and batch processing educational content.</Description>

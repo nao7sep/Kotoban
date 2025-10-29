@@ -1,8 +1,8 @@
 namespace Kotoban.DataManager.Models
 {
     /// <summary>
-    /// 指定項目のAIコンテンツの状態に基づく動的メニューに使われる列挙型。
-    /// これがないと、メニュー項目の文字列でのswitchになる。
+    /// 指定項目の AI コンテンツの状態に基づく動的メニューで使用される列挙型です。
+    /// 文字列ベースの switch 文を避け、型安全なメニュー操作を提供します。
     /// </summary>
     internal enum AiContentAction
     {

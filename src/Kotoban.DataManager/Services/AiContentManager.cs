@@ -47,7 +47,7 @@ namespace Kotoban.DataManager.Services
             var currentItemIndex = 0;
             while (currentItemIndex < itemsToFinalize.Count)
             {
-                // itemsToFinalize の項目をそのまま読むことも可能だが、レポジトリーパターンを尊重し、常に最新情報を取得する。
+                // リポジトリパターンを尊重し、キャッシュされた項目ではなく最新の状態を取得します。
                 var currentItem = await repository.GetByIdAsync(itemsToFinalize[currentItemIndex].Id);
                 if (currentItem == null || currentItem.Status == EntryStatus.Approved)
                 {
@@ -55,7 +55,7 @@ namespace Kotoban.DataManager.Services
                     continue;
                 }
 
-                // 仕上げ時には、たとえば更新後にもう一度読み返すなども有益なので、毎回表示。
+                // 仕上げプロセスでは更新後の確認が重要なため、毎回項目詳細を表示します。
                 ConsoleUserInterface.PrintItemDetails(currentItem, showTimestamps: false);
 
                 Console.WriteLine();
@@ -69,7 +69,7 @@ namespace Kotoban.DataManager.Services
                 switch (choice)
                 {
                     case "1": // 項目データを更新する
-                        // いきなり「新しい値を～」より、空行に続けて、どのモードに入ったのか明示した方が分かりやすい。
+                        // ユーザビリティ向上のため、モード切り替えを明示的に表示します。
                         Console.WriteLine();
                         Console.WriteLine("=== 項目の更新 ===");
                         await ItemManager.UpdateItemCoreAsync(currentItem, services, showAiMenu: false);
@@ -78,8 +78,7 @@ namespace Kotoban.DataManager.Services
                         await MenuSystem.ShowAiContentMenuAsync(currentItem, services, printItemDetails: false);
                         break;
                     case "3": // 次の項目へ
-                        // 最終確認をしてから次へ進めるようにしておく。
-                        // それを確認しての移動なので、ここで追加の表示は不要。
+                        // ユーザーの明示的な選択による移動のため、追加の確認表示は不要です。
                         currentItemIndex++;
                         break;
                     case "4": // 仕上げプロセスを終了する
@@ -141,8 +140,8 @@ namespace Kotoban.DataManager.Services
                     }
                 }
 
-                // たまに突発的に API が遅くてタイムアウトになるなどがある。
-                // 一度の失敗でループから抜けてしまうと「数時間放置したのに」になるので、ログを書き込んで続行。
+                // API の一時的な障害やタイムアウトによる処理中断を防ぐため、
+                // 個別の失敗はログに記録して処理を継続します。
 
                 try
                 {
@@ -150,7 +149,7 @@ namespace Kotoban.DataManager.Services
                     Console.Write($"処理中: {ConsoleUserInterface.GetDisplayText(item)} ({processedCount + 1}/{totalCount})...");
 
                     // 説明を生成
-                    // 一括生成では追加のコンテキストを指定せず、とりあえず null で生成してみる。
+                    // 一括生成では標準設定を使用するため、追加コンテキストは null で実行します。
                     var generatedExplanationResult = await aiContentService.GenerateExplanationsAsync(item, newExplanationContext: null);
 
                     // 生成された説明を項目に登録
@@ -166,7 +165,7 @@ namespace Kotoban.DataManager.Services
                 {
                     logger.LogError(ex, "Failed to generate explanations for entry {EntryId}", item.Id);
 
-                    // エラーが発生してもカウントは進める（スキップ扱い）
+                    // エラー発生時もカウントを進めて処理を継続します（スキップ扱い）。
                     processedCount++;
                 }
             }
@@ -224,9 +223,9 @@ namespace Kotoban.DataManager.Services
             var aiContentService = services.GetRequiredService<IAiContentService>();
             var logger = services.GetRequiredService<ILogger<Program>>();
 
-            // たぶんないが、参照の中身が更新されることも想定し、データをコピー。
+            // 参照データの意図しない変更を防ぐため、元の説明データをコピーして保持します。
             var originalExplanations = new Dictionary<ExplanationLevel, string>(item.Explanations);
-            var generatedExplanationResults = new List<GeneratedExplanationResult?>(); // 失敗した回は null になる。
+            var generatedExplanationResults = new List<GeneratedExplanationResult?>(); // 生成失敗時は null を格納
             var previousExplanationContext = item.ExplanationContext;
 
             while (true)
@@ -234,15 +233,14 @@ namespace Kotoban.DataManager.Services
                 Console.WriteLine();
                 Console.WriteLine($"=== 説明の生成 (試行回数: {generatedExplanationResults.Count + 1}) ===");
 
-                // Entry に入っているものでなく、前回試行時のものを使う。
-                // 出力が惜しく、プロンプトに問題はなさそうだから再試行したいケースは、
-                // 出力がダメだから最初のものに立ち返りたいケースより頻度が高い。
+                // 前回試行時のコンテキストを初期値として使用します。
+                // 微調整による再試行の方が、完全なやり直しより頻度が高いためです。
                 var newExplanationContext = ConsoleUserInterface.ReadString($"新しい説明生成用のコンテキスト (変更しない場合はEnter): ", previousExplanationContext);
                 previousExplanationContext = newExplanationContext;
 
                 try
                 {
-                    // 例外が飛ばなかったなら要素数は3になるのが保証されている。
+                    // 正常終了時は3つの説明レベル全てが生成されることが保証されています。
                     var generatedExplanationResult = await aiContentService.GenerateExplanationsAsync(item, newExplanationContext);
                     generatedExplanationResults.Add(generatedExplanationResult);
                     foreach (var kvp in generatedExplanationResult.Explanations)
@@ -259,7 +257,7 @@ namespace Kotoban.DataManager.Services
                 while (true)
                 {
                     Console.WriteLine();
-                    Console.WriteLine("=== どうしまっか～？ ===");
+                    Console.WriteLine("=== 選択してください ===");
                     if (item.Explanations.Any())
                     {
                         Console.WriteLine("0. オリジナルの説明を使用する");
@@ -283,7 +281,7 @@ namespace Kotoban.DataManager.Services
 
                     if (int.TryParse(choice, out int idx) && idx >= 1 && idx <= generatedExplanationResults.Count && generatedExplanationResults[idx - 1] != null)
                     {
-                        // null でないと確認されるが、添え字が計算式だからか、null かもしれないと叱られる。
+                        // null チェック済みですが、計算式による添え字のため null 許容演算子を使用します。
                         var selected = generatedExplanationResults[idx - 1]!;
                         item.RegisterGeneratedExplanations(selected.Context, selected.Explanations);
                         await repository.UpdateAsync(item);
@@ -317,7 +315,7 @@ namespace Kotoban.DataManager.Services
             var logger = services.GetRequiredService<ILogger<Program>>();
 
             SavedImage? originalImage = null;
-            var savedImages = new List<SavedImage?>(); // 失敗した回は null になる。
+            var savedImages = new List<SavedImage?>(); // 生成失敗時は null を格納
             var previousImageContext = item.ImageContext;
 
             try
@@ -326,9 +324,9 @@ namespace Kotoban.DataManager.Services
             }
             catch (Exception ex)
             {
-                // StartImageEditingAsync はデータの不整合でも投げてくるので、続行のために例外をキャッチ。
-                // このメソッドがログだけ吐いて続行というのがデザイン上どうしても気に入らなかった。
-                // よって、ライブラリーを厳密に動かせ、アプリ側を「ログして進む」のゆるさに。
+                // StartImageEditingAsync はデータ不整合時に例外を発生させるため、
+                // 処理継続のために例外をキャッチしてログに記録します。
+                // ライブラリは厳密に動作し、アプリケーション側で柔軟に対応する設計です。
                 logger.LogError(ex, "Error preparing original image.");
             }
 
@@ -362,7 +360,7 @@ namespace Kotoban.DataManager.Services
                 while (true)
                 {
                     Console.WriteLine();
-                    Console.WriteLine("=== どうしまっか～？ ===");
+                    Console.WriteLine("=== 選択してください ===");
                     if (originalImage != null)
                     {
                         Console.WriteLine("0. オリジナルの画像を使用する");
@@ -387,7 +385,7 @@ namespace Kotoban.DataManager.Services
 
                     if (int.TryParse(choice, out int idx) && idx >= 1 && idx <= savedImages.Count && savedImages[idx - 1] != null)
                     {
-                        // null でないと確認されるが、添え字が計算式だからか、null かもしれないと叱られる。
+                        // null チェック済みですが、計算式による添え字のため null 許容演算子を使用します。
                         var selected = savedImages[idx - 1]!;
                         var imagePath = await imageManager.FinalizeImageAsync(item, selected);
                         item.RegisterGeneratedImage(selected.ImageContext, imagePath, selected.ImagePrompt);
@@ -426,12 +424,12 @@ namespace Kotoban.DataManager.Services
 
         /// <summary>
         /// AIコンテンツを削除します。
-        /// ほかのメソッドと異なり、完了時のメッセージがオプションになっている。付近のものとかぶってうるさくなるなら、こちらを黙らせる。
+        /// 他のメソッドと異なり、完了メッセージはオプションです。重複表示を避けるため制御可能にしています。
         /// </summary>
         public static async Task DeleteAiContentAsync(Entry item, IServiceProvider services, string? completionMessage)
         {
             var repository = services.GetRequiredService<IEntryRepository>();
-            // インターフェースでは、FinalImageDirectory をもらえない。
+            // インターフェースでは FinalImageDirectory にアクセスできないため、具象クラスにキャストします。
             var imageManager = services.GetRequiredService<IImageManager>() as ImageManager ?? throw new InvalidOperationException("ImageManager is not available.");
 
             // 画像ファイルの物理削除
@@ -440,14 +438,11 @@ namespace Kotoban.DataManager.Services
                 var imagePath = Path.Combine(imageManager.FinalImageDirectory, item.ImageFileName);
                 if (File.Exists(imagePath))
                 {
-                    // 迷ったが、例外をキャッチせず、ログへの書き込みも行わず、
-                    // ここで問題があればエントリーの削除が行われないように変更した。
+                    // ファイル削除に失敗した場合、エントリの削除も行わない設計です。
+                    // これにより orphan file の発生を防ぎ、再起動等による問題解決を可能にします。
                     //
-                    // 基本的な構造として、このアプリでは、メインメニューと AI メニューの二つが try/catch で何でもキャッチする。
-                    // そのため、それぞれのコマンドのコードはシンプルになっていて、何かあれば、すぐそこで処理が止まる。
-                    //
-                    // このメソッドも、ファイルを消せなければ項目も消さない方が、パソコンの再起動だけで問題を解決できるだろう。
-                    // 逆に、ファイルが残ったのに項目を消しては、そのままユーザーが忘れることで、いわゆる orphan file が残る。
+                    // アプリケーションの例外処理は上位レベル（メインメニュー・AI メニュー）で
+                    // 包括的に行われるため、個別のコマンドはシンプルに実装されています。
 
                     File.Delete(imagePath);
                 }

@@ -20,29 +20,25 @@ namespace Kotoban.DataManager.UI
         /// </summary>
         public static async Task RunApplicationLoopAsync(IServiceProvider services)
         {
-            // scope とは、app-wide でなく、その中の特定のライフサイクルのこと。
-            // WPF の MainWindows がイメージとして近そう。
-            // それがつくられる前にも、それが破棄されたあとにも、プロセスは存在する。
-            // そこで使うサービスとは別に、MainWindow のスコープでも、そのためのサービスが用意される。
-            // こうやっておけば、たとえば、RunApplicationLoop を複数回実行しても、app-wide なサービスに影響しない。
+            // DI スコープを作成してアプリケーションループ専用のサービスプロバイダを取得します。
+            // スコープはアプリケーション全体ではなく、特定のライフサイクル（この場合はメニューループ）に
+            // 限定されたサービスインスタンスを提供します。
             //
-            // という構成により、このメソッドの内部で呼ばれるメソッドには、scope 用の services が渡される。
-            // app-wide のものとの区別のため、メソッドの引数名も scopedServices とすることを考えたが、
-            // scoped がついていてもいなくても受け取るもの次第なので、ただ冗長になる。
+            // これにより、RunApplicationLoop の複数回実行時でも、アプリケーション全体の
+            // サービスに影響を与えることなく、独立したサービススコープで動作できます。
 
             using var scope = services.CreateScope();
             var scopedServices = scope.ServiceProvider;
             var logger = scopedServices.GetRequiredService<ILogger<Program>>();
 
-            // Build 後に ILogger<ActionDispatcher> を使いたいので、サービス登録のところでなく、ここで action を登録。
+            // ILogger<ActionDispatcher> を使用するため、ホスト構築後にアクションを登録します。
             var actionDispatcher = scopedServices.GetRequiredService<ActionDispatcher>();
             var actionLogger = scopedServices.GetRequiredService<ILogger<ActionDispatcher>>();
 #pragma warning disable CS1998 // この非同期メソッドには 'await' 演算子がないため、同期的に実行されます
             actionDispatcher.Register("trace", async parameters =>
 #pragma warning restore CS1998
             {
-                // トレースは、パラメーターの書き方次第であり、そこにミスがなければランタイムで突然落ちることはない。
-                // よって、parameters を厳しめに見ておく。
+                // トレース処理はパラメータの正確性に依存するため、厳密な検証を行います。
 
                 if (parameters == null)
                 {
@@ -89,7 +85,7 @@ namespace Kotoban.DataManager.UI
                 Console.WriteLine();
                 Console.WriteLine("=== メインメニュー ===");
                 Console.WriteLine("1. 項目を追加する");
-                Console.WriteLine("2. データを仕上げる"); // AIコンテンツの生成と項目の承認を流れ作業で。
+                Console.WriteLine("2. データを仕上げる"); // AI コンテンツの生成と項目の承認を流れ作業で実行
                 Console.WriteLine("3. 説明を一括生成する");
                 Console.WriteLine("4. 項目のリストを表示する");
                 Console.WriteLine("5. 項目を表示・更新する");
@@ -145,7 +141,7 @@ namespace Kotoban.DataManager.UI
 
             if (printItemDetails)
             {
-                // ループで毎回表示するとうるさいので、最初に一度だけ表示。
+                // ユーザビリティ向上のため、項目詳細は最初に一度だけ表示します。
                 ConsoleUserInterface.PrintItemDetails(item, showTimestamps: false);
             }
 
@@ -195,7 +191,7 @@ namespace Kotoban.DataManager.UI
                             break;
                         case AiContentAction.Approve:
                             await AiContentManager.ApproveAiContentAsync(item, services);
-                            return; // 承認後はメニューを抜ける
+                            return; // 承認完了後はメニューを終了します
                         case AiContentAction.Delete:
                             await AiContentManager.DeleteAiContentAsync(item, services, "AIコンテンツが削除されました。");
                             break;

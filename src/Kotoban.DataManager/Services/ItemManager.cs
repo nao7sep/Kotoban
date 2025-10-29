@@ -136,7 +136,7 @@ namespace Kotoban.DataManager.Services
                 return;
             }
 
-            // 1行ずつの入力や出力のところでは空行は不要だが、リスト表示の直前にないと違和感がある。
+            // リスト表示の可読性向上のため、表示前に空行を挿入します。
             Console.WriteLine();
 
             foreach (var item in entryList)
@@ -217,7 +217,7 @@ namespace Kotoban.DataManager.Services
             var itemToUpdate = await SelectItemAsync(services, "表示・更新する項目のIDまたは読みがな: ");
             if (itemToUpdate == null)
             {
-                // null が返った理由は、SelectItemAsync により表示される。
+                // SelectItemAsync でエラーメッセージが表示されるため、ここでは追加処理不要です。
                 return;
             }
 
@@ -240,9 +240,9 @@ namespace Kotoban.DataManager.Services
 
             var newReading = ConsoleUserInterface.ReadString($"読みがな [{item.Reading}]: ", item.Reading);
 
-            // 読みがなは並び替えに使われるものなので、add/update の両方でトリムされる。
-            // ほかは、前後に空白が入ろうと実害が軽微なので、トリム沼を回避しておく。
-            // 必須データなので、有効な文字列が得られなかったなら元の値にフォールバック。
+            // 読みがなはソートキーとして使用されるため、前後の空白を除去します。
+            // 他のフィールドは空白による影響が軽微なため、過度なトリム処理は避けます。
+            // 必須フィールドのため、無効な値の場合は元の値を保持します。
             newReading = newReading?.Trim();
             if (string.IsNullOrWhiteSpace(newReading))
                 newReading = item.Reading;
@@ -274,16 +274,12 @@ namespace Kotoban.DataManager.Services
 
                 bool hadAiContent = item.Status != EntryStatus.PendingAiGeneration;
 
-                // まずテキストの変更を保存。
-                // DeleteAiContentAsync も保存を行うため、二度手間になっていると AI に怒られることがある。
-                // これは仕様。
+                // テキスト変更を先に保存します。
+                // DeleteAiContentAsync も保存処理を行うため重複しますが、これは意図的な設計です。
                 //
-                // UpdateAsync は保存「のみ」を行うと確約されたものでなく、むしろ persistent storage を意識せず「項目の更新」を行うもの。
-                // 実装を追えば確かに瞬間的に二度の保存になって無駄だが、
-                // ロジックで考えるなら、保存の処理を伴うかどうか「分からない」UpdateAsync をここで呼ぶことは誤りでない。
-                //
-                // エントリーの更新という低頻度の処理において微々たるコストが発生するが、論理的な正しさをここでは優先。
-                // DeleteAiContentAsync を「削除」と「保存」に分ける選択肢もあるが、そこまでつくり込むこともないのでこのへんで。
+                // UpdateAsync は単純な保存処理ではなく、永続化ストレージを意識しない
+                // 「項目の更新」操作として定義されています。論理的な正しさを優先し、
+                // 低頻度な更新処理での軽微なコスト増加は許容します。
 
                 await repository.UpdateAsync(item);
                 Console.WriteLine("項目を更新しました。");
@@ -313,7 +309,7 @@ namespace Kotoban.DataManager.Services
             var itemToDelete = await SelectItemAsync(services, "削除する項目のIDまたは読みがな: ");
             if (itemToDelete == null)
             {
-                // null が返った理由は、SelectItemAsync により表示される。
+                // SelectItemAsync でエラーメッセージが表示されるため、ここでは追加処理不要です。
                 return;
             }
 
@@ -322,9 +318,9 @@ namespace Kotoban.DataManager.Services
 
             if (confirmation?.ToLower() == "y")
             {
-                // データベースから削除する前に、関連ファイルをクリーンアップ。
-                // DeleteAiContentAsync は特殊になっていて、メッセージを出力しないことも可能。
-                // ここのように、もっと大きなまとまりが消されたなら、AI コンテンツが消されたと出力する必要はない。
+                // データベース削除前に関連ファイルをクリーンアップします。
+                // 項目全体の削除時は AI コンテンツ削除の個別メッセージは不要なため、
+                // completionMessage を null に設定します。
                 await AiContentManager.DeleteAiContentAsync(itemToDelete, services, completionMessage: null);
                 await repository.DeleteAsync(itemToDelete.Id);
                 Console.WriteLine("項目が削除されました。");

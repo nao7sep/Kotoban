@@ -30,29 +30,29 @@ namespace Kotoban.DataManager
         {
             var host = await ApplicationHost.CreateHostAsync(args);
 
-            // ここで logger と先ほどの serilogLogger の違いをちゃんと理解しておくことは非常に重要。
-            // （マイクを GPT-4.1 に）。
-
-            // serilogLogger は Serilog の生のロガーインスタンスであり、Serilog 独自の API（Write, Information, Error など）を直接使ってログ出力できます。
-            // 一方、logger（ILogger<Program>）は Microsoft.Extensions.Logging の抽象ロガーで、DI（依存性注入）経由で取得し、アプリ全体で統一的に利用することが推奨されます。
+            // ILogger<Program> と Serilog の生ロガーインスタンスの使い分けについて：
             //
-            // AddSerilog で Serilog をロギングプロバイダーとして登録しているため、ILogger<T> で出力したログも最終的には serilogLogger によって処理され、
-            // Serilog の設定（出力先・フォーマット・フィルタなど）が適用されます。
+            // 【ILogger<Program> の特徴】
+            // - Microsoft.Extensions.Logging の抽象ロガーで、DI 経由で取得します
+            // - .NET 標準のロギング API として、アプリケーション全体で統一的に利用することが推奨されます
+            // - <Program> により「Kotoban.DataManager.Program」がカテゴリ名として自動付与され、
+            //   ログのフィルタリングや出力フォーマットでカテゴリごとの制御が可能になります
             //
-            // ここで <Program> となっているのは「ロガーのカテゴリ名」として型名（この場合は "Kotoban.DataManager.Program"）が自動的に付与されるためです。
-            // これにより、ログ出力時に「どのクラスから出たログか」を Serilog 側で判別でき、ログのフィルタリングや出力フォーマットでカテゴリごとの制御が可能になります。
+            // 【Serilog との連携】
+            // - AddSerilog でロギングプロバイダーとして登録されているため、ILogger<T> の出力も
+            //   最終的には Serilog によって処理され、Serilog の設定が適用されます
             //
-            // まとめ：
-            //   - アプリケーションコードでは serilogLogger を直接使わず、ILogger<T>（ここでは ILogger<Program>）を使うのがベストプラクティス。
-            //   - ILogger<T> を使うことで、.NET 標準のロギングAPIの恩恵（DI, カテゴリ分け, テスト容易性など）と Serilog の高機能な出力を両立できる。
-            //   - <T> には通常「現在のクラス名」を指定し、カテゴリごとにログを分けることで、運用・保守・分析がしやすくなる。
+            // 【ベストプラクティス】
+            // - アプリケーションコードでは Serilog の生ロガーを直接使用せず、ILogger<T> を使用します
+            // - これにより .NET 標準 API の恩恵（DI、カテゴリ分け、テスト容易性）と
+            //   Serilog の高機能な出力機能を両立できます
 
             var logger = host.Services.GetRequiredService<ILogger<Program>>();
 
             try
             {
-                // 長々と書いたが、このブロックのほとんどはアプリ名とバージョンの取得。
-                // 今のところほかで必要でない情報なので、ここにベタ書き。
+                // アセンブリ情報からアプリケーション名とバージョンを取得します。
+                // 現在は他の箇所で使用されていないため、ここで直接取得しています。
 
                 var assembly = Assembly.GetExecutingAssembly();
                 var assemblyTitle = assembly.GetCustomAttribute<AssemblyTitleAttribute>()?.Title;
@@ -80,13 +80,13 @@ namespace Kotoban.DataManager
 
                 logger.LogInformation("Application starting.");
 
-                // ここで host を丸ごと渡すのはベストプラクティスでないと。
+                // IServiceProvider を渡すことで、必要なサービスのみアクセス可能にします。
                 await MenuSystem.RunApplicationLoopAsync(host.Services);
 
-                // 一時画像を掃除するなら、ここが一番の場所。
-                // finally で無防備にやると例外が飛んだときに困る。
-                // かといって、finally に try/catch を入れると、万が一にも永続的な問題が起こり始めた場合に気づけない。
-                // ここでやるもう一つの利点は、RunApplicationLoop が落ちたなら一時画像が残ってくれてデバッグに役立ちうること。
+                // 一時画像のクリーンアップを正常終了時に実行します。
+                // finally ブロックでの実行は例外発生時の処理が複雑になるため、ここで実行します。
+                // また、アプリケーションループで例外が発生した場合、一時画像が保持されることで
+                // デバッグ時の調査に役立ちます。
                 await imageManager.CleanupTempImagesAsync(entryId: null);
             }
             catch (Exception ex)
@@ -97,22 +97,36 @@ namespace Kotoban.DataManager
             {
                 logger.LogInformation("Application shutting down.");
 
-                // SerilogのLoggerはAddSerilog(dispose: true)で登録しているため、
-                // ホストのDispose時に自動的にフラッシュ・クローズされる。
-                // そのため、ここでCloseAndFlushAsyncを明示的に呼ぶ必要はありません。
+                // Serilog ロガーは AddSerilog(dispose: true) で登録されているため、
+                // ホストの Dispose 時に自動的にフラッシュ・クローズされます。
+                // そのため、ここで CloseAndFlushAsync を明示的に呼ぶ必要はありません。
 
-                // AI コメントに追記: Log を使っていたときには必要だったこと。
-                // 静的プロパティーなので、閉じてフラッシュするタイミングが自分では分からない。
-                // しかし、サービス登録すれば、施設管理者が「そろそろ片づけろ」と言う。
+                // 【静的ロガーとサービス登録の比較】
+                // 静的プロパティを使用する場合：
+                // - 初期化タイミングが Lazy に依存し、dispose タイミングが不明確
+                // - プロセス終了時の自動クリーンアップに依存する設計になりがち
                 //
-                // 静的プロパティーにデータを放り込んでいく構成は、初期化のタイミングが Lazy 頼みになったり、
-                // dispose のことを「プロセスが消えるときにどうせ」と開き直ったりになりがち。
-                // そのあたりもスマートにできそうで、今後の開発ではデフォルトでこのデザインパターンを採用できそう。
+                // サービス登録を使用する場合：
+                // - DI コンテナがライフサイクルを管理し、適切なタイミングでリソース解放
+                // - より制御された、予測可能なリソース管理が可能
 
                 // await logger.CloseAndFlushAsync();
 
-                // Mac で ReadKey が例外を投げたので、ReadLine に変更した。
-                // https://github.com/nao7sep/coding-notes/blob/main/understanding-the-console-readkey-exception-in-a-dotnet-async-finally-block-on-macos.md
+                // macOS 環境での Console.ReadKey() 問題により Console.ReadLine() を使用します。
+                //
+                // 【問題の詳細】
+                // async Main メソッドの finally ブロック内で Console.ReadKey() を実行すると、
+                // Windows では正常動作しますが、macOS では InvalidOperationException が発生します。
+                //
+                // 【原因分析】
+                // Console.ReadKey() は raw モードで物理キーボードからの直接信号を要求しますが、
+                // macOS の finally ブロック実行時に IsInputRedirected が true となり、
+                // セキュリティ上の理由で物理キーボード以外の入力が拒否されます。
+                //
+                // 【解決策】
+                // Console.ReadLine() は cooked/canonical mode（行入力モード）で動作し、
+                // アプリケーション終了処理中でも安定して動作します。
+                // 低レベルな入力処理が不要な場面では ReadLine() の使用を推奨します。
                 Console.Write("Enterキーを押して終了します...");
                 Console.ReadLine();
             }

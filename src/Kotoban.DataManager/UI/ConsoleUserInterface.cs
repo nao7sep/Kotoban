@@ -23,8 +23,8 @@ namespace Kotoban.DataManager.UI
         }
 
         /// <summary>
-        /// トリミングなしで返すので、読み取り側で適宜。
-        /// 読み取るメソッドがトリミングも行うと呼び出し側の選択肢が減る。
+        /// ユーザー入力を読み取ります。トリミング処理は行わず、呼び出し側で適切に処理してください。
+        /// これにより呼び出し側での柔軟な処理が可能になります。
         /// </summary>
         public static string? ReadString(string prompt, string? defaultValue = null)
         {
