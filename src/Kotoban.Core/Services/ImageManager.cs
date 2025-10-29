@@ -188,9 +188,11 @@ namespace Kotoban.Core.Services
             }
             else
             {
-                // entryId が null の場合、ファイル名の先頭36文字が GUID としてパースできるものだけ削除対象にする
+                // entryId が指定されていない場合は、ファイル名の先頭36文字が有効な GUID として
+                // パースできるファイルのみを削除対象とします。これにより、GUID 形式でない
+                // 一時ファイルが誤って削除されることを防ぎます。
                 // 例: "123e4567-e89b-12d3-a456-426614174000-0.png"
-                // GUID の "D" フォーマットはハイフンを含む36文字: 8-4-4-4-12
+                // GUID の "D" フォーマットはハイフンを含む36文字の形式です (8-4-4-4-12)。
                 files = files.Where(f =>
                 {
                     var fileNameWithoutExtension = Path.GetFileNameWithoutExtension(f);

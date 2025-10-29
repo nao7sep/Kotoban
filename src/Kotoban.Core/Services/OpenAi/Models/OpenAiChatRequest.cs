@@ -3,11 +3,24 @@ using System.Text.Json.Serialization;
 
 namespace Kotoban.Core.Services.OpenAi.Models
 {
-    // Responses API も検討した。
-    // その前に Chat Completions でつくっちまっていたので、消して Responses API でつくり直すほどの理由もなく、Kotoban では Chat Completions でいく。
-    // もっとも、二つを比較しての判断として、今回においては、実装がまだだったとしても Chat Completions でつくっていた可能性が高い。
-    // そういったところを今後の参考のために冗長気味に書いておいた。
-    // https://github.com/nao7sep/coding-notes/blob/main/strategic-considerations-for-choosing-between-openais-chat-completions-and-responses-apis.md
+    // OpenAI は Chat Completions から Responses API への移行を推奨していますが、
+    // Kotoban では以下の理由により Chat Completions を継続使用します。
+    //
+    // 【Responses API との比較検討結果】
+    // 1. 会話ログ管理: Responses API では OpenAI 側での管理が必須となり、
+    //    ローカルでの柔軟な会話ログ操作（必要なメッセージのみ選択送信等）が困難
+    // 2. 機能面: Chat Completions の既存機能で Kotoban の要件は充足
+    // 3. 実装済み: 既に Chat Completions ベースで実装済みであり、移行の必要性が低い
+    //
+    // 【Chat Completions を選択する基準】
+    // - AI 機能が Chat Completions で充足している
+    // - messages の動的操作が必要（コンテキスト圧縮、関連メッセージ選択等）
+    // - stateless な処理を重視する
+    //
+    // 【Responses API を選択すべき場合】
+    // - 新規開発で長期的な派生開発が予想される
+    // - コスト最適化を重視する（40-80%のコスト削減が期待できる）
+    // - OpenAI 側での会話管理で問題ない
 
     /// <summary>
     /// OpenAI Chat API へのリクエストを表すモデルクラスです。

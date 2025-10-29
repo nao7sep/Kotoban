@@ -61,9 +61,9 @@ namespace Kotoban.Core.Services.OpenAi
                 message.Headers.Add("Authorization", $"Bearer {transport.ApiKey}");
             }
 
-            // 呼び出し元がキャンセルトークンを指定した場合、タイムアウト用トークンとリンクさせることで、
-            // どちらか一方がキャンセルされた時点でリクエスト全体を中断できるようにする。
-            // これにより、呼び出し元のキャンセル要求またはタイムアウトのいずれか早い方で確実にキャンセルされる。
+            // 呼び出し元から渡されたキャンセルトークンと、このメソッド内部のタイムアウト用トークンをリンクさせます。
+            // これにより、外部からのキャンセル要求、またはタイムアウトのいずれかが発生した時点で、
+            // 即座にリクエストをキャンセルできます。
             using var cts = cancellationToken.HasValue
                 ? CancellationTokenSource.CreateLinkedTokenSource(cancellationToken.Value)
                 : new CancellationTokenSource(_networkSettings.Timeout);
