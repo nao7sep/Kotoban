@@ -4,6 +4,9 @@ using System.Linq;
 
 namespace Kotoban.Core.Utils
 {
+    /// <summary>
+    /// 文字列処理に関するユーティリティメソッドを提供します。
+    /// </summary>
     public static class StringUtils
     {
         /// <summary>

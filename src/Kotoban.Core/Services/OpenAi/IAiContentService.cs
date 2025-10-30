@@ -25,7 +25,6 @@ namespace Kotoban.Core.Services.OpenAi
         /// </summary>
         /// <param name="entry">画像を生成するエントリ。</param>
         /// <param name="newImageContext">生成に使用する新しい画像コンテキスト。</param>
-        /// <param name="attemptNumber">生成試行回数。</param>
         /// <returns>
         /// 生成された画像の情報を格納した <see cref="GeneratedImageResult"/>。
         /// </returns>

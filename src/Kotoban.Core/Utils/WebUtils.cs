@@ -3,6 +3,9 @@ using System.Collections.Generic;
 
 namespace Kotoban.Core.Utils
 {
+    /// <summary>
+    /// Web関連の操作とContent-Type処理に関するユーティリティメソッドを提供します。
+    /// </summary>
     public static class WebUtils
     {
         /// <summary>

@@ -14,6 +14,7 @@ namespace Kotoban.Core.Utils
         /// <param name="sourceFileName">コピー元のファイルパス。</param>
         /// <param name="destFileName">コピー先のファイルパス。</param>
         /// <param name="overwrite">コピー先に既存ファイルがある場合に上書きするかどうか。</param>
+        /// <param name="cancellationToken">非同期操作をキャンセルするためのトークン。</param>
         public static async Task CopyAsync(string sourceFileName, string destFileName, bool overwrite = false, CancellationToken cancellationToken = default)
         {
             // FileStreamを使って非同期でコピーを実行

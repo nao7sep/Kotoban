@@ -2,6 +2,9 @@ using System;
 
 namespace Kotoban.Core.Utils
 {
+    /// <summary>
+    /// 日時の表示とフォーマットに関するユーティリティメソッドを提供します。
+    /// </summary>
     public static class DateTimeUtils
     {
         public const string DisplayFormat = "yyyy-MM-dd HH:mm:ss 'UTC'";

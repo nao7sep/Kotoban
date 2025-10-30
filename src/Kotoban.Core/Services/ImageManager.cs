@@ -90,10 +90,9 @@ namespace Kotoban.Core.Services
             var currentImagePath = Path.Combine(FinalImageDirectory, entry.ImageFileName);
             if (!File.Exists(currentImagePath))
             {
-                // データの整合性が失われているため、本来はエラーとして処理すべき状況です。
-                // しかし、この直後に新しい画像を生成して上書きするワークフローが多いため、
-                // ここで例外を投げると、正常な回復処理を妨げてしまう可能性があります。
-                // ログには記録し、開発中にこの問題が頻発するようであれば、根本的な原因を調査する必要があります。
+                // データの整合性が失われているため、エラーとして処理します。
+                // ファイルが見つからない場合は例外をスローして呼び出し元に問題を通知し、
+                // 適切な回復処理を促します。
                 throw new FileNotFoundException($"Final image file not found: {currentImagePath}");
             }
 
@@ -167,7 +166,6 @@ namespace Kotoban.Core.Services
             return Task.FromResult(finalFileName);
         }
 
-        /// <inheritdoc />
         /// <inheritdoc />
     #pragma warning disable CS1998 // この非同期メソッドには 'await' 演算子がないため、同期的に実行されます
         public async Task CleanupTempImagesAsync(Guid? entryId)

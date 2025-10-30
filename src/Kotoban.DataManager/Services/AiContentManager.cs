@@ -426,6 +426,9 @@ namespace Kotoban.DataManager.Services
         /// AIコンテンツを削除します。
         /// 他のメソッドと異なり、完了メッセージはオプションです。重複表示を避けるため制御可能にしています。
         /// </summary>
+        /// <param name="item">AIコンテンツを削除する対象のエントリ。</param>
+        /// <param name="services">必要なサービスを取得するためのサービスプロバイダー。</param>
+        /// <param name="completionMessage">削除完了時に表示するメッセージ。nullの場合は何も表示しない。</param>
         public static async Task DeleteAiContentAsync(Entry item, IServiceProvider services, string? completionMessage)
         {
             var repository = services.GetRequiredService<IEntryRepository>();
