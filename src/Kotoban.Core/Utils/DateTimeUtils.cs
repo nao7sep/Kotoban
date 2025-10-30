@@ -15,7 +15,7 @@ namespace Kotoban.Core.Utils
             return dateTime.ToString(DisplayFormat);
         }
 
-        public static string FormatNullableForDisplay(DateTime? dateTime, string defaultValue = "なし")
+        public static string FormatNullableForDisplay(DateTime? dateTime, string defaultValue = "none")
         {
             return dateTime.HasValue ? dateTime.Value.ToString(DisplayFormat) : defaultValue;
         }

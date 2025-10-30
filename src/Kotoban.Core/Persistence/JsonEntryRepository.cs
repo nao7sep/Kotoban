@@ -149,29 +149,38 @@ namespace Kotoban.Core.Persistence
             var exceptions = new List<Exception>();
 
             // バックアップ
-            if (BackupMode == JsonRepositoryBackupMode.CreateCopy)
+            switch (BackupMode)
             {
-                try
-                {
-                    if (File.Exists(DataFile))
+                case JsonRepositoryBackupMode.CreateCopy:
+                    try
                     {
-                        Directory.CreateDirectory(BackupDirectory);
+                        if (File.Exists(DataFile))
+                        {
+                            Directory.CreateDirectory(BackupDirectory);
 
-                        // タイムスタンプの競合は稀であり、発生した場合でも差分がないため、
-                        // 現在のタイムスタンプ精度で十分です。
-                        var timestamp = DateTimeUtils.UtcNowTimestamp();
-                        var originalFileNameWithoutExtension = Path.GetFileNameWithoutExtension(DataFile);
-                        // バックアップファイルは元の拡張子を維持します。
-                        var backupFileName = $"{originalFileNameWithoutExtension}-{timestamp}.json";
-                        var backupPath = Path.Combine(BackupDirectory, backupFileName);
+                            // タイムスタンプの競合は稀であり、発生した場合でも差分がないため、
+                            // 現在のタイムスタンプ精度で十分です。
+                            var timestamp = DateTimeUtils.UtcNowTimestamp();
+                            var originalFileNameWithoutExtension = Path.GetFileNameWithoutExtension(DataFile);
+                            // バックアップファイルは元の拡張子を維持します。
+                            var backupFileName = $"{originalFileNameWithoutExtension}-{timestamp}.json";
+                            var backupPath = Path.Combine(BackupDirectory, backupFileName);
 
-                        await FileUtils.CopyAsync(DataFile, backupPath, true, cancellationToken).ConfigureAwait(false);
+                            await FileUtils.CopyAsync(DataFile, backupPath, true, cancellationToken).ConfigureAwait(false);
+                        }
                     }
-                }
-                catch (Exception ex)
-                {
-                    exceptions.Add(ex);
-                }
+                    catch (Exception ex)
+                    {
+                        exceptions.Add(ex);
+                    }
+                    break;
+
+                case JsonRepositoryBackupMode.None:
+                    // バックアップは作成されません。
+                    break;
+
+                default:
+                    throw new InvalidOperationException($"Unsupported backup mode: {BackupMode}");
             }
 
             // アトミックな保存操作：一時ファイルに書き込み、成功したら元ファイルと置き換える
@@ -222,40 +231,51 @@ namespace Kotoban.Core.Persistence
             }
 
             // クリーンアップ
-            if (BackupMode == JsonRepositoryBackupMode.CreateCopy)
+            switch (BackupMode)
             {
-                try
-                {
-                    if (MaxBackupFiles > 0)
+                case JsonRepositoryBackupMode.CreateCopy:
+                    try
                     {
-                        Directory.CreateDirectory(BackupDirectory);
-                        var originalFileNameWithoutExtension = Path.GetFileNameWithoutExtension(DataFile);
-                        var backupFiles = Directory.GetFiles(BackupDirectory)
-                            .Where(f => Path.GetFileName(f).StartsWith(originalFileNameWithoutExtension + "-") &&
-                                        Path.GetExtension(f).Equals(".json", StringComparison.OrdinalIgnoreCase))
-                            .ToArray();
-
-                        if (backupFiles.Length > MaxBackupFiles)
+                        if (MaxBackupFiles > 0)
                         {
-                            var filesToDelete = backupFiles.OrderBy(f => f, StringComparer.OrdinalIgnoreCase).Take(backupFiles.Length - MaxBackupFiles);
-                            foreach (var file in filesToDelete)
+                            Directory.CreateDirectory(BackupDirectory);
+                            var originalFileNameWithoutExtension = Path.GetFileNameWithoutExtension(DataFile);
+                            var backupFiles = Directory.GetFiles(BackupDirectory)
+                                .Where(f => Path.GetFileName(f).StartsWith(originalFileNameWithoutExtension + "-") &&
+                                            Path.GetExtension(f).Equals(".json", StringComparison.OrdinalIgnoreCase))
+                                .ToArray();
+
+                            if (backupFiles.Length > MaxBackupFiles)
                             {
-                                try
+                                var filesToDelete = backupFiles.OrderBy(f => f, StringComparer.OrdinalIgnoreCase).Take(backupFiles.Length - MaxBackupFiles);
+                                foreach (var file in filesToDelete)
                                 {
-                                    File.Delete(file);
-                                }
-                                catch (Exception deleteEx)
-                                {
-                                    exceptions.Add(new Exception($"Failed to delete old backup file '{file}'.", deleteEx));
+                                    try
+                                    {
+                                        File.Delete(file);
+                                    }
+                                    catch (Exception deleteEx)
+                                    {
+                                        exceptions.Add(new Exception($"Failed to delete old backup file '{file}'.", deleteEx));
+                                    }
                                 }
                             }
                         }
                     }
-                }
-                catch (Exception ex)
-                {
-                    exceptions.Add(ex);
-                }
+                    catch (Exception ex)
+                    {
+                        exceptions.Add(ex);
+                    }
+                    break;
+
+                case JsonRepositoryBackupMode.None:
+                    // バックアップは作成されません。
+                    break;
+
+                default:
+                    // The backup mode was already validated in the backup section above.
+                    // No need to throw an exception here.
+                    break;
             }
 
             if (exceptions.Any())

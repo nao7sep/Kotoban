@@ -61,7 +61,7 @@ namespace Kotoban.Core.Services
         {
             // 開発中の利便性を考慮し、プロンプトファイルはキャッシュせず、常にファイルから直接読み込みます。
             // これにより、アプリケーションを再起動することなくプロンプトの変更を即座に反映できます。
-            return await File.ReadAllTextAsync(ExplanationPromptFormatFile, Encoding.UTF8);
+            return await File.ReadAllTextAsync(ExplanationPromptFormatFile, Encoding.UTF8).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -72,7 +72,7 @@ namespace Kotoban.Core.Services
         {
             // 開発中の利便性を考慮し、プロンプトファイルはキャッシュせず、常にファイルから直接読み込みます。
             // これにより、アプリケーションを再起動することなくプロンプトの変更を即座に反映できます。
-            return await File.ReadAllTextAsync(ImagePromptFormatFile, Encoding.UTF8);
+            return await File.ReadAllTextAsync(ImagePromptFormatFile, Encoding.UTF8).ConfigureAwait(false);
         }
     }
 }

@@ -50,7 +50,7 @@ namespace Kotoban.Core.Services.OpenAi
         public async Task<GeneratedExplanationResult> GenerateExplanationsAsync(Entry entry, string? newExplanationContext)
         {
             // プロンプトフォーマットをプロバイダーから取得
-            var promptFormat = await _promptFormatProvider.GetExplanationPromptFormatAsync();
+            var promptFormat = await _promptFormatProvider.GetExplanationPromptFormatAsync().ConfigureAwait(false);
 
             var prompt = string.Format(
                 promptFormat,
@@ -60,7 +60,7 @@ namespace Kotoban.Core.Services.OpenAi
                 newExplanationContext
             );
 
-            await _actionDispatcher.InvokeAsync("trace", "prompt", prompt);
+            await _actionDispatcher.InvokeAsync("trace", "prompt", prompt).ConfigureAwait(false);
 
             // OpenAI の "Structured Outputs" 機能を利用するため、`response_format` パラメータに JSON スキーマを定義します。
             // スキーマの詳細は OpenAI の公式ドキュメントを参照してください。
@@ -96,7 +96,7 @@ namespace Kotoban.Core.Services.OpenAi
             };
 
             var request = _openAiRequestFactory.CreateSimpleChatRequest(prompt, additionalData: additionalData);
-            var response = await _openAiApiClient.GetChatResponseAsync(_transportContext, request, _actionDispatcher);
+            var response = await _openAiApiClient.GetChatResponseAsync(_transportContext, request, _actionDispatcher).ConfigureAwait(false);
 
             var content = response.Choices?.FirstOrDefault()?.Message?.Content;
             if (string.IsNullOrWhiteSpace(content))
@@ -121,7 +121,7 @@ namespace Kotoban.Core.Services.OpenAi
         public async Task<GeneratedImageResult> GenerateImageAsync(Entry entry, string? newImageContext)
         {
             // プロンプトフォーマットをプロバイダーから取得
-            var promptFormat = await _promptFormatProvider.GetImagePromptFormatAsync();
+            var promptFormat = await _promptFormatProvider.GetImagePromptFormatAsync().ConfigureAwait(false);
 
             string? GetExplanationOrNull(ExplanationLevel level)
             {
@@ -141,10 +141,10 @@ namespace Kotoban.Core.Services.OpenAi
                 newImageContext
             );
 
-            await _actionDispatcher.InvokeAsync("trace", "prompt", prompt);
+            await _actionDispatcher.InvokeAsync("trace", "prompt", prompt).ConfigureAwait(false);
 
             var request = _openAiRequestFactory.CreateImageRequest(prompt);
-            var response = await _openAiApiClient.GenerateImageAsync(_transportContext, request, _actionDispatcher);
+            var response = await _openAiApiClient.GenerateImageAsync(_transportContext, request, _actionDispatcher).ConfigureAwait(false);
 
             var data = response.Data?.FirstOrDefault();
             if (data == null)
@@ -161,13 +161,13 @@ namespace Kotoban.Core.Services.OpenAi
             var imagePrompt = data.RevisedPrompt;
 
             using var stream = new MemoryStream();
-            var headers = await _webClient.DownloadToStreamAsync(url, stream);
+            var headers = await _webClient.DownloadToStreamAsync(url, stream).ConfigureAwait(false);
             var imageBytes = stream.ToArray();
             headers.TryGetValue("Content-Type", out var contentTypeValues);
             var contentType = contentTypeValues?.FirstOrDefault();
 
     #if DEBUG
-            await _actionDispatcher.InvokeAsync("trace", "image-content-type", contentType ?? "(null)");
+            await _actionDispatcher.InvokeAsync("trace", "image-content-type", contentType ?? "(null)").ConfigureAwait(false);
     #endif
 
             // 判別できなければ、.png にフォールバックする。

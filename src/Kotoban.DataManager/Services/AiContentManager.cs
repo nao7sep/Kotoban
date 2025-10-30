@@ -16,6 +16,11 @@ namespace Kotoban.DataManager.Services
 {
     /// <summary>
     /// AIコンテンツの生成と管理を行います。
+    ///
+    /// このクラスは、元々 Program.cs に実装されていたメソッド群を、責務に基づいて分割・整理したものです。
+    /// そのため、一部の設計は典型的なクラス設計とは異なる場合がありますが、
+    /// コンソールアプリケーションのUIロジックと機能フローを管理するという目的を達成するために、
+    /// このような静的クラスの構成が採用されています。
     /// </summary>
     internal static class AiContentManager
     {
@@ -28,7 +33,7 @@ namespace Kotoban.DataManager.Services
             var logger = services.GetRequiredService<ILogger<Program>>();
 
             Console.WriteLine();
-            Console.WriteLine("=== 未承認項目の仕上げ ===");
+            Console.WriteLine("=== Finalize Unapproved Items ===");
 
             var allItems = await repository.GetAllAsync();
             var itemsToFinalize = allItems
@@ -38,11 +43,11 @@ namespace Kotoban.DataManager.Services
 
             if (!itemsToFinalize.Any())
             {
-                Console.WriteLine("すべての項目が承認済みです。");
+                Console.WriteLine("All items are already approved.");
                 return;
             }
 
-            Console.WriteLine($"未承認の項目が{itemsToFinalize.Count}件見つかりました。");
+            Console.WriteLine($"Found {itemsToFinalize.Count} unapproved item(s).");
 
             var currentItemIndex = 0;
             while (currentItemIndex < itemsToFinalize.Count)
@@ -59,19 +64,19 @@ namespace Kotoban.DataManager.Services
                 ConsoleUserInterface.PrintItemDetails(currentItem, showTimestamps: false);
 
                 Console.WriteLine();
-                Console.WriteLine("=== 仕上げメニュー ===");
-                Console.WriteLine("1. 項目データを更新する");
-                Console.WriteLine("2. AIコンテンツを管理する");
-                Console.WriteLine("3. 次の項目へ");
-                Console.WriteLine("4. 仕上げプロセスを終了する");
-                var choice = ConsoleUserInterface.ReadString("選択してください: ");
+                Console.WriteLine("=== Finalize Menu ===");
+                Console.WriteLine("1. Update Item Data");
+                Console.WriteLine("2. Manage AI Content");
+                Console.WriteLine("3. Next Item");
+                Console.WriteLine("4. Exit Finalization Process");
+                var choice = ConsoleUserInterface.ReadString("Enter choice: ");
 
                 switch (choice)
                 {
                     case "1": // 項目データを更新する
                         // ユーザビリティ向上のため、モード切り替えを明示的に表示します。
                         Console.WriteLine();
-                        Console.WriteLine("=== 項目の更新 ===");
+                        Console.WriteLine("=== Update Item ===");
                         await ItemManager.UpdateItemCoreAsync(currentItem, services, showAiMenu: false);
                         break;
                     case "2": // AIコンテンツを管理する
@@ -82,16 +87,16 @@ namespace Kotoban.DataManager.Services
                         currentItemIndex++;
                         break;
                     case "4": // 仕上げプロセスを終了する
-                        Console.WriteLine("仕上げプロセスを終了します。");
+                        Console.WriteLine("Exiting finalization process.");
                         return;
                     default:
-                        Console.WriteLine("無効な選択です。");
+                        Console.WriteLine("Invalid choice.");
                         break;
                 }
             }
 
             Console.WriteLine();
-            Console.WriteLine("すべての未承認項目の処理が完了しました。");
+            Console.WriteLine("Finished processing all unapproved items.");
         }
 
         /// <summary>
@@ -104,7 +109,7 @@ namespace Kotoban.DataManager.Services
             var logger = services.GetRequiredService<ILogger<Program>>();
 
             Console.WriteLine();
-            Console.WriteLine("=== 説明の一括生成 ===");
+            Console.WriteLine("=== Bulk Generate Explanations ===");
 
             // 説明がない項目を取得
             var allItems = await repository.GetAllAsync();
@@ -115,13 +120,13 @@ namespace Kotoban.DataManager.Services
 
             if (!itemsWithoutExplanations.Any())
             {
-                Console.WriteLine("説明が必要な項目がありません。");
-                Console.WriteLine("すべての項目に説明が生成済みです。");
+                Console.WriteLine("No items require explanations.");
+                Console.WriteLine("All items already have explanations.");
                 return;
             }
 
-            Console.WriteLine($"説明が未生成の項目が{itemsWithoutExplanations.Count}件見つかりました。");
-            Console.WriteLine("ESCキーを押すと処理を中断できます。");
+            Console.WriteLine($"Found {itemsWithoutExplanations.Count} item(s) without explanations.");
+            Console.WriteLine("Press ESC to interrupt.");
 
             var processedCount = 0;
             var totalCount = itemsWithoutExplanations.Count;
@@ -134,8 +139,8 @@ namespace Kotoban.DataManager.Services
                     var keyInfo = Console.ReadKey(true);
                     if (keyInfo.Key == ConsoleKey.Escape)
                     {
-                        Console.WriteLine("処理が中断されました。");
-                        Console.WriteLine($"結果: {processedCount}/{totalCount} 件完了");
+                        Console.WriteLine("Processing was interrupted.");
+                        Console.WriteLine($"Result: {processedCount}/{totalCount} completed.");
                         return;
                     }
                 }
@@ -146,7 +151,7 @@ namespace Kotoban.DataManager.Services
                 try
                 {
                     // 現在処理中の項目を表示
-                    Console.Write($"処理中: {ConsoleUserInterface.GetDisplayText(item)} ({processedCount + 1}/{totalCount})...");
+                    Console.Write($"Processing: {ConsoleUserInterface.GetDisplayText(item)} ({processedCount + 1}/{totalCount})...");
 
                     // 説明を生成
                     // 一括生成では標準設定を使用するため、追加コンテキストは null で実行します。
@@ -159,7 +164,7 @@ namespace Kotoban.DataManager.Services
                     await repository.UpdateAsync(item);
 
                     processedCount++;
-                    Console.WriteLine(" 完了");
+                    Console.WriteLine(" Done");
                 }
                 catch (Exception ex)
                 {
@@ -170,8 +175,8 @@ namespace Kotoban.DataManager.Services
                 }
             }
 
-            Console.WriteLine($"説明の一括生成が完了しました。");
-            Console.WriteLine($"結果: {processedCount}/{totalCount} 件完了");
+            Console.WriteLine($"Bulk explanation generation complete.");
+            Console.WriteLine($"Result: {processedCount}/{totalCount} completed.");
         }
 
         /// <summary>
@@ -182,12 +187,12 @@ namespace Kotoban.DataManager.Services
             var repository = services.GetRequiredService<IEntryRepository>();
 
             Console.WriteLine();
-            Console.WriteLine($"=== AIコンテンツの{(action == AiContentAction.Generate ? "生成" : "再生成")} ===");
+            Console.WriteLine($"=== {(action == AiContentAction.Generate ? "Generate" : "Regenerate")} AI Content ===");
 
-            Console.WriteLine("1. 説明のみ生成する");
-            Console.WriteLine("2. 画像のみ生成する");
-            Console.WriteLine("3. 説明と画像の両方を生成する");
-            var choice = ConsoleUserInterface.ReadString("選択してください: ");
+            Console.WriteLine("1. Generate Explanations Only");
+            Console.WriteLine("2. Generate Image Only");
+            Console.WriteLine("3. Generate Both Explanations and Image");
+            var choice = ConsoleUserInterface.ReadString("Enter choice: ");
 
             switch (choice)
             {
@@ -202,7 +207,7 @@ namespace Kotoban.DataManager.Services
                     await ManageImageAsync(item, services);
                     break;
                 default:
-                    Console.WriteLine("無効な選択です。");
+                    Console.WriteLine("Invalid choice.");
                     return;
             }
 
@@ -231,11 +236,11 @@ namespace Kotoban.DataManager.Services
             while (true)
             {
                 Console.WriteLine();
-                Console.WriteLine($"=== 説明の生成 (試行回数: {generatedExplanationResults.Count + 1}) ===");
+                Console.WriteLine($"=== Generate Explanations (Attempt: {generatedExplanationResults.Count + 1}) ===");
 
                 // 前回試行時のコンテキストを初期値として使用します。
                 // 微調整による再試行の方が、完全なやり直しより頻度が高いためです。
-                var newExplanationContext = ConsoleUserInterface.ReadString($"新しい説明生成用のコンテキスト (変更しない場合はEnter): ", previousExplanationContext);
+                var newExplanationContext = ConsoleUserInterface.ReadString($"New context for explanation generation (press Enter to leave unchanged): ", previousExplanationContext);
                 previousExplanationContext = newExplanationContext;
 
                 try
@@ -257,25 +262,25 @@ namespace Kotoban.DataManager.Services
                 while (true)
                 {
                     Console.WriteLine();
-                    Console.WriteLine("=== 選択してください ===");
+                    Console.WriteLine("=== Please make a selection ===");
                     if (item.Explanations.Any())
                     {
-                        Console.WriteLine("0. オリジナルの説明を使用する");
+                        Console.WriteLine("0. Use original explanations");
                     }
                     for (int i = 0; i < generatedExplanationResults.Count; i++)
                     {
                         if (generatedExplanationResults[i] != null)
                         {
-                            Console.WriteLine($"{i + 1}. {i + 1}回目に生成した説明を使用する");
+                            Console.WriteLine($"{(i + 1)}. Use explanations from attempt {(i + 1)}");
                         }
                     }
-                    Console.WriteLine("r または Enter: もう一度生成する（リトライ）");
-                    Console.WriteLine("e: 終了する（キャンセル）");
-                    var choice = ConsoleUserInterface.ReadString("選択してください: ");
+                    Console.WriteLine("r or Enter: Regenerate (retry)");
+                    Console.WriteLine("e: Exit (cancel)");
+                    var choice = ConsoleUserInterface.ReadString("Enter choice: ");
 
                     if (choice == "0" && originalExplanations.Any())
                     {
-                        Console.WriteLine("オリジナルの説明を保持します。");
+                        Console.WriteLine("Keeping original explanations.");
                         return;
                     }
 
@@ -285,7 +290,7 @@ namespace Kotoban.DataManager.Services
                         var selected = generatedExplanationResults[idx - 1]!;
                         item.RegisterGeneratedExplanations(selected.Context, selected.Explanations);
                         await repository.UpdateAsync(item);
-                        Console.WriteLine($"{idx}回目の説明を保存しました。");
+                        Console.WriteLine($"Saved explanations from attempt {idx}.");
                         return;
                     }
 
@@ -299,7 +304,7 @@ namespace Kotoban.DataManager.Services
                         return;
                     }
 
-                    Console.WriteLine("無効な選択です。");
+                    Console.WriteLine("Invalid choice.");
                 }
             }
         }
@@ -333,9 +338,9 @@ namespace Kotoban.DataManager.Services
             while (true)
             {
                 Console.WriteLine();
-                Console.WriteLine($"=== 画像の生成 (試行回数: {savedImages.Count + 1}) ===");
+                Console.WriteLine($"=== Generate Image (Attempt: {savedImages.Count + 1}) ===");
 
-                var newImageContext = ConsoleUserInterface.ReadString($"新しい画像生成用のコンテキスト (変更しない場合はEnter): ", previousImageContext);
+                var newImageContext = ConsoleUserInterface.ReadString($"New context for image generation (press Enter to leave unchanged): ", previousImageContext);
                 previousImageContext = newImageContext;
 
                 try
@@ -343,7 +348,7 @@ namespace Kotoban.DataManager.Services
                     var generatedImageResult = await aiContentService.GenerateImageAsync(item, newImageContext);
                     var savedImage = await imageManager.SaveGeneratedImageAsync(item, generatedImageResult.ImageBytes, generatedImageResult.Extension, savedImages.Count + 1, generatedImageResult.Context, DateTime.UtcNow, generatedImageResult.ImagePrompt);
                     savedImages.Add(savedImage);
-                    Console.WriteLine($"画像を生成しました: {savedImage.FileName}");
+                    Console.WriteLine($"Generated image: {savedImage.FileName}");
                 }
                 catch (Exception ex)
                 {
@@ -354,31 +359,31 @@ namespace Kotoban.DataManager.Services
                 async Task CleanupTempImagesAsync()
                 {
                     await imageManager.CleanupTempImagesAsync(item.Id);
-                    Console.WriteLine("一時ファイルをクリーンアップしました。");
+                    Console.WriteLine("Cleaned up temporary files.");
                 }
 
                 while (true)
                 {
                     Console.WriteLine();
-                    Console.WriteLine("=== 選択してください ===");
+                    Console.WriteLine("=== Please make a selection ===");
                     if (originalImage != null)
                     {
-                        Console.WriteLine("0. オリジナルの画像を使用する");
+                        Console.WriteLine("0. Use original image");
                     }
                     for (int i = 0; i < savedImages.Count; i++)
                     {
                         if (savedImages[i] != null)
                         {
-                            Console.WriteLine($"{i + 1}. {i + 1}回目に生成した画像を使用する");
+                            Console.WriteLine($"{(i + 1)}. Use image from attempt {(i + 1)}");
                         }
                     }
-                    Console.WriteLine("r または Enter: もう一度生成する（リトライ）");
-                    Console.WriteLine("e: 終了する（キャンセル）");
-                    var choice = ConsoleUserInterface.ReadString("選択してください: ");
+                    Console.WriteLine("r or Enter: Regenerate (retry)");
+                    Console.WriteLine("e: Exit (cancel)");
+                    var choice = ConsoleUserInterface.ReadString("Enter choice: ");
 
                     if (choice == "0" && originalImage != null)
                     {
-                        Console.WriteLine("オリジナルの画像を保持します。");
+                        Console.WriteLine("Keeping original image.");
                         await CleanupTempImagesAsync();
                         return;
                     }
@@ -390,7 +395,7 @@ namespace Kotoban.DataManager.Services
                         var imagePath = await imageManager.FinalizeImageAsync(item, selected);
                         item.RegisterGeneratedImage(selected.ImageContext, imagePath, selected.ImagePrompt);
                         await repository.UpdateAsync(item);
-                        Console.WriteLine($"{idx}回目の画像を保存しました。");
+                        Console.WriteLine($"Saved image from attempt {idx}.");
                         await CleanupTempImagesAsync();
                         return;
                     }
@@ -406,7 +411,7 @@ namespace Kotoban.DataManager.Services
                         return;
                     }
 
-                    Console.WriteLine("無効な選択です。");
+                    Console.WriteLine("Invalid choice.");
                 }
             }
         }
@@ -419,7 +424,7 @@ namespace Kotoban.DataManager.Services
             var repository = services.GetRequiredService<IEntryRepository>();
             item.Approve();
             await repository.UpdateAsync(item);
-            Console.WriteLine("コンテンツが承認されました。");
+            Console.WriteLine("Content approved.");
         }
 
         /// <summary>

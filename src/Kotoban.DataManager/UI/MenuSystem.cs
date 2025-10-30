@@ -12,6 +12,11 @@ namespace Kotoban.DataManager.UI
 {
     /// <summary>
     /// メニューシステムとナビゲーションロジックを管理します。
+    ///
+    /// このクラスは、元々 Program.cs に実装されていたメソッド群を、責務に基づいて分割・整理したものです。
+    /// そのため、一部の設計は典型的なクラス設計とは異なる場合がありますが、
+    /// コンソールアプリケーションのUIロジックと機能フローを管理するという目的を達成するために、
+    /// このような静的クラスの構成が採用されています。
     /// </summary>
     internal static class MenuSystem
     {
@@ -84,15 +89,15 @@ namespace Kotoban.DataManager.UI
             while (true)
             {
                 Console.WriteLine();
-                Console.WriteLine("=== メインメニュー ===");
-                Console.WriteLine("1. 項目を追加する");
-                Console.WriteLine("2. データを仕上げる"); // AI コンテンツの生成と項目の承認を流れ作業で実行
-                Console.WriteLine("3. 説明を一括生成する");
-                Console.WriteLine("4. 項目のリストを表示する");
-                Console.WriteLine("5. 項目を表示・更新する");
-                Console.WriteLine("6. 項目を削除する");
-                Console.WriteLine("7. 終了する");
-                Console.Write("選択してください: ");
+                Console.WriteLine("=== Main Menu ===");
+                Console.WriteLine("1. Add Item");
+                Console.WriteLine("2. Finalize Data"); // AI コンテンツの生成と項目の承認を流れ作業で実行
+                Console.WriteLine("3. Bulk Generate Explanations");
+                Console.WriteLine("4. View Item List");
+                Console.WriteLine("5. View/Update Item");
+                Console.WriteLine("6. Delete Item");
+                Console.WriteLine("7. Exit");
+                Console.Write("Enter choice: ");
 
                 var choice = Console.ReadLine();
 
@@ -121,8 +126,8 @@ namespace Kotoban.DataManager.UI
                         case "7":
                             return;
                         default:
-                            Console.WriteLine("無効な選択です。");
-                            Console.WriteLine("もう一度お試しください。");
+                            Console.WriteLine("Invalid choice.");
+                            Console.WriteLine("Please try again.");
                             break;
                     }
                 }
@@ -149,55 +154,56 @@ namespace Kotoban.DataManager.UI
             while (true)
             {
                 Console.WriteLine();
-                Console.WriteLine("=== AIコンテンツ管理メニュー ===");
+                Console.WriteLine("=== AI Content Management ===");
 
                 var options = new Dictionary<string, (AiContentAction Action, string DisplayText)>();
                 var optionIndex = 1;
 
                 if (item.Status == EntryStatus.PendingAiGeneration)
                 {
-                    options.Add(optionIndex++.ToString(), (AiContentAction.Generate, "AIコンテンツを生成する"));
+                    options.Add(optionIndex++.ToString(), (AiContentAction.Generate, "Generate AI Content"));
                 }
                 else
                 {
-                    options.Add(optionIndex++.ToString(), (AiContentAction.Regenerate, "AIコンテンツを再生成する"));
+                    options.Add(optionIndex++.ToString(), (AiContentAction.Regenerate, "Regenerate AI Content"));
                     if (item.Status == EntryStatus.PendingApproval)
                     {
-                        options.Add(optionIndex++.ToString(), (AiContentAction.Approve, "AIコンテンツを承認する"));
+                        options.Add(optionIndex++.ToString(), (AiContentAction.Approve, "Approve AI Content"));
                     }
-                    options.Add(optionIndex++.ToString(), (AiContentAction.Delete, "AIコンテンツを削除する"));
+                    options.Add(optionIndex++.ToString(), (AiContentAction.Delete, "Delete AI Content"));
                 }
-                options.Add(optionIndex.ToString(), (AiContentAction.Exit, "メインメニューに戻る"));
+                options.Add(optionIndex.ToString(), (AiContentAction.Exit, "Return to Main Menu"));
 
                 foreach (var opt in options)
                 {
                     Console.WriteLine($"{opt.Key}. {opt.Value.DisplayText}");
                 }
-                var choice = ConsoleUserInterface.ReadString("選択してください: ");
+                var choice = ConsoleUserInterface.ReadString("Enter choice: ");
 
                 if (choice == null || !options.TryGetValue(choice, out var selectedOption))
                 {
-                    Console.WriteLine("無効な選択です。");
+                    Console.WriteLine("Invalid choice.");
                     continue;
                 }
 
                 try
                 {
-                    var selectedAction = selectedOption.Action;
-                    switch (selectedAction)
+                    switch (selectedOption.Action)
                     {
                         case AiContentAction.Generate:
                         case AiContentAction.Regenerate:
-                            await AiContentManager.GenerateOrUpdateAiContentAsync(item, services, selectedAction);
+                            await AiContentManager.GenerateOrUpdateAiContentAsync(item, services, selectedOption.Action);
                             break;
                         case AiContentAction.Approve:
                             await AiContentManager.ApproveAiContentAsync(item, services);
                             return; // 承認完了後はメニューを終了します
                         case AiContentAction.Delete:
-                            await AiContentManager.DeleteAiContentAsync(item, services, "AIコンテンツが削除されました。");
+                            await AiContentManager.DeleteAiContentAsync(item, services, "AI content deleted.");
                             break;
                         case AiContentAction.Exit:
                             return;
+                        default:
+                            throw new InvalidOperationException($"Unsupported action: {selectedOption.Action}");
                     }
                 }
                 catch (Exception ex)

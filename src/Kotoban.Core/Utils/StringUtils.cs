@@ -10,7 +10,12 @@ namespace Kotoban.Core.Utils
     public static class StringUtils
     {
         /// <summary>
-        /// 複数行文字列を正規化します。
+        /// 複数行文字列を正規化し、不要な空白行を削除します。
+        ///
+        /// このメソッドは、以下の処理を行います：
+        /// - 先頭と末尾の空行をすべて削除します。
+        /// - 2行以上連続する空行を1行にまとめます。
+        /// - 各行の末尾にある空白文字を削除します。
         /// </summary>
         /// <param name="value">処理する文字列。</param>
         /// <returns>正規化された行のシーケンス。</returns>

@@ -33,11 +33,11 @@ namespace Kotoban.Core.Services
         {
             using var client = _httpClientFactory.CreateClient();
             // ResponseHeadersRead: レスポンスヘッダー受信時点で処理を継続し、本文全体のダウンロードを待たずにストリームとして処理できるようにするオプション
-            using var response = await client.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+            using var response = await client.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
 
-            await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
-            await stream.CopyToAsync(destinationStream, cancellationToken);
+            await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
+            await stream.CopyToAsync(destinationStream, cancellationToken).ConfigureAwait(false);
 
             // --- HTTPレスポンスで取得できる主な情報 ---
             // ・ステータスコード（例: 200, 404, 500）

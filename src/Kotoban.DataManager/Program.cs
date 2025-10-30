@@ -127,7 +127,7 @@ namespace Kotoban.DataManager
                 // Console.ReadLine() は cooked/canonical mode（行入力モード）で動作し、
                 // アプリケーション終了処理中でも安定して動作します。
                 // 低レベルな入力処理が不要な場面では ReadLine() の使用を推奨します。
-                Console.Write("Enterキーを押して終了します...");
+                Console.Write("Press Enter to exit...");
                 Console.ReadLine();
             }
         }

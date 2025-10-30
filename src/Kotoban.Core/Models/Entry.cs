@@ -14,27 +14,27 @@ namespace Kotoban.Core.Models
         public Guid Id { get; set; }
 
         /// <summary>
-        /// 読み仮名。
+        /// 単語の必須の音声読み（ひらがな）。
         /// </summary>
         public string Reading { get; set; } = string.Empty;
 
         /// <summary>
-        /// 表記。
+        /// 標準的な表記法（漢字など）。任意項目です。
         /// </summary>
         public string? Expression { get; set; }
 
         /// <summary>
-        /// AIが単語を特定するための一般的なコンテキスト。
+        /// 意図された正確な意味をAIが理解するためのコンテキスト。このコンテキストはAIの生成結果には含まれません。
         /// </summary>
         public string? GeneralContext { get; set; }
 
         /// <summary>
-        /// 説明生成用のコンテキスト。
+        /// 説明の内容とトーンを形成するためにAIが従うべきコンテキスト。
         /// </summary>
         public string? ExplanationContext { get; set; }
 
         /// <summary>
-        /// 画像生成用のコンテキスト。
+        /// 画像の芸術的なスタイル、構成、および特定の内容に関するAIへの主要なガイド。
         /// </summary>
         public string? ImageContext { get; set; }
 

@@ -23,7 +23,7 @@ namespace Kotoban.Core.Models
         public DateTime GeneratedAtUtc { get; set; }
 
         /// <summary>
-        /// 画像を再現するためにAIが使用したプロンプト。
+        /// AIによって修正され、実際に画像生成に使用された最終的なプロンプト。
         /// </summary>
         public string? ImagePrompt { get; set; }
     }

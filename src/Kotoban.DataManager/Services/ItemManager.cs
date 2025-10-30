@@ -11,6 +11,11 @@ namespace Kotoban.DataManager.Services
 {
     /// <summary>
     /// 項目のCRUD操作を管理します。
+    ///
+    /// このクラスは、元々 Program.cs に実装されていたメソッド群を、責務に基づいて分割・整理したものです。
+    /// そのため、一部の設計は典型的なクラス設計とは異なる場合がありますが、
+    /// コンソールアプリケーションのUIロジックと機能フローを管理するという目的を達成するために、
+    /// このような静的クラスの構成が採用されています。
     /// </summary>
     internal static class ItemManager
     {
@@ -33,13 +38,13 @@ namespace Kotoban.DataManager.Services
 
             if (duplicates.Any())
             {
-                Console.WriteLine("同じ読みがなを持つ既存の項目が見つかりました。");
+                Console.WriteLine("Found existing item(s) with the same reading.");
                 foreach (var dup in duplicates)
                 {
-                    Console.WriteLine($"ID: {dup.Id} | 用語: {ConsoleUserInterface.GetDisplayText(dup)} | ステータス: {dup.Status}");
+                    Console.WriteLine($"ID: {dup.Id} | Term: {ConsoleUserInterface.GetDisplayText(dup)} | Status: {dup.Status}");
                 }
 
-                var proceed = ConsoleUserInterface.ReadString("このまま続行しますか？ (y/n): ", "n");
+                var proceed = ConsoleUserInterface.ReadString("Do you want to continue anyway? (y/n): ", "n");
                 if (!string.Equals(proceed, "y", StringComparison.OrdinalIgnoreCase))
                 {
                     return false; // キャンセル
@@ -57,16 +62,16 @@ namespace Kotoban.DataManager.Services
             var repository = services.GetRequiredService<IEntryRepository>();
 
             Console.WriteLine();
-            Console.WriteLine("=== 項目の追加 ===");
+            Console.WriteLine("=== Add Item ===");
 
             var newItem = new Entry();
 
             while (true)
             {
-                var reading = ConsoleUserInterface.ReadString("読みがな (キャンセルする場合は 'c'): ");
+                var reading = ConsoleUserInterface.ReadString("Reading (enter 'c' to cancel): ");
                 if (string.Equals(reading, "c", StringComparison.OrdinalIgnoreCase))
                 {
-                    Console.WriteLine("項目の追加をキャンセルしました。");
+                    Console.WriteLine("Item creation cancelled.");
                     return;
                 }
                 if (!string.IsNullOrWhiteSpace(reading))
@@ -74,23 +79,23 @@ namespace Kotoban.DataManager.Services
                     newItem.Reading = reading.Trim();
                     break;
                 }
-                Console.WriteLine("読みがなは必須です。");
+                Console.WriteLine("Reading is required.");
             }
 
             if (!await CheckForDuplicatesAsync(services, newItem.Reading))
             {
-                Console.WriteLine("項目の追加をキャンセルしました。");
+                Console.WriteLine("Item creation cancelled.");
                 return;
             }
 
-            newItem.Expression = ConsoleUserInterface.ReadString("表記 (オプション): ");
-            newItem.GeneralContext = ConsoleUserInterface.ReadString("一般的なコンテキスト (オプション): ");
-            newItem.UserNote = ConsoleUserInterface.ReadString("ユーザーメモ (オプション): ");
+            newItem.Expression = ConsoleUserInterface.ReadString("Expression (optional): ");
+            newItem.GeneralContext = ConsoleUserInterface.ReadString("General Context (optional): ");
+            newItem.UserNote = ConsoleUserInterface.ReadString("User Note (optional): ");
             newItem.Status = EntryStatus.PendingAiGeneration;
             newItem.CreatedAtUtc = DateTime.UtcNow;
 
             await repository.AddAsync(newItem);
-            Console.WriteLine($"項目 '{ConsoleUserInterface.GetDisplayText(newItem)}' が追加されました。");
+            Console.WriteLine($"Item '{ConsoleUserInterface.GetDisplayText(newItem)}' was added.");
             Console.WriteLine($"ID: {newItem.Id}");
             await MenuSystem.ShowAiContentMenuAsync(newItem, services);
         }
@@ -103,13 +108,13 @@ namespace Kotoban.DataManager.Services
             var repository = services.GetRequiredService<IEntryRepository>();
 
             Console.WriteLine();
-            Console.WriteLine("=== 項目一覧 ===");
-            Console.WriteLine("どのステータスの項目を表示しますか？");
-            Console.WriteLine("1. すべて");
-            Console.WriteLine($"2. AI生成待ち ({EntryStatus.PendingAiGeneration})");
-            Console.WriteLine($"3. 承認待ち ({EntryStatus.PendingApproval})");
-            Console.WriteLine($"4. 承認済み ({EntryStatus.Approved})");
-            var choice = ConsoleUserInterface.ReadString("選択してください [1]: ", "1");
+            Console.WriteLine("=== Item List ===");
+            Console.WriteLine("Which item status would you like to display?");
+            Console.WriteLine("1. All");
+            Console.WriteLine($"2. Pending AI Generation ({EntryStatus.PendingAiGeneration})");
+            Console.WriteLine($"3. Pending Approval ({EntryStatus.PendingApproval})");
+            Console.WriteLine($"4. Approved ({EntryStatus.Approved})");
+            var choice = ConsoleUserInterface.ReadString("Enter choice [1]: ", "1");
 
             IEnumerable<Entry> itemsToShow;
 
@@ -132,7 +137,7 @@ namespace Kotoban.DataManager.Services
             var entryList = itemsToShow.ToList();
             if (!entryList.Any())
             {
-                Console.WriteLine("表示する項目がありません。");
+                Console.WriteLine("There are no items to display.");
                 return;
             }
 
@@ -141,7 +146,7 @@ namespace Kotoban.DataManager.Services
 
             foreach (var item in entryList)
             {
-                Console.WriteLine($"ID: {item.Id} | 用語: {ConsoleUserInterface.GetDisplayText(item)} | ステータス: {item.Status}");
+                Console.WriteLine($"ID: {item.Id} | Term: {ConsoleUserInterface.GetDisplayText(item)} | Status: {item.Status}");
             }
         }
 
@@ -155,7 +160,7 @@ namespace Kotoban.DataManager.Services
             var input = ConsoleUserInterface.ReadString(prompt);
             if (string.IsNullOrWhiteSpace(input))
             {
-                Console.WriteLine("操作をキャンセルしました。");
+                Console.WriteLine("Operation cancelled.");
                 return null;
             }
 
@@ -164,7 +169,7 @@ namespace Kotoban.DataManager.Services
                 var item = await repository.GetByIdAsync(id);
                 if (item == null)
                 {
-                    Console.WriteLine($"ID '{id}' の項目が見つかりませんでした。");
+                    Console.WriteLine($"Item with ID '{id}' not found.");
                 }
                 return item;
             }
@@ -177,7 +182,7 @@ namespace Kotoban.DataManager.Services
 
                 if (matchingItems.Count == 0)
                 {
-                    Console.WriteLine($"読みがな '{input}' に一致する項目が見つかりませんでした。");
+                    Console.WriteLine($"No items found with reading '{input}'.");
                     return null;
                 }
                 else if (matchingItems.Count == 1)
@@ -186,20 +191,20 @@ namespace Kotoban.DataManager.Services
                 }
                 else
                 {
-                    Console.WriteLine($"読みがな '{input}' に一致する項目が複数見つかりました。");
+                    Console.WriteLine($"Multiple items found with reading '{input}'.");
                     for (int i = 0; i < matchingItems.Count; i++)
                     {
-                        Console.WriteLine($"{i + 1}. {ConsoleUserInterface.GetDisplayText(matchingItems[i])} (ID: {matchingItems[i].Id})");
+                        Console.WriteLine($"{(i + 1)}. {ConsoleUserInterface.GetDisplayText(matchingItems[i])} (ID: {matchingItems[i].Id})");
                     }
-                    var choiceStr = ConsoleUserInterface.ReadString("項目を選択してください: ");
+                    var choiceStr = ConsoleUserInterface.ReadString("Select an item: ");
                     if (int.TryParse(choiceStr, out var choiceInt) && choiceInt > 0 && choiceInt <= matchingItems.Count)
                     {
                         return matchingItems[choiceInt - 1];
                     }
                     else
                     {
-                        Console.WriteLine("無効な選択です。");
-                        Console.WriteLine("操作をキャンセルしました。");
+                        Console.WriteLine("Invalid selection.");
+                        Console.WriteLine("Operation cancelled.");
                         return null;
                     }
                 }
@@ -212,9 +217,9 @@ namespace Kotoban.DataManager.Services
         public static async Task UpdateItemAsync(IServiceProvider services)
         {
             Console.WriteLine();
-            Console.WriteLine("=== 項目の表示・更新 ===");
+            Console.WriteLine("=== View/Update Item ===");
 
-            var itemToUpdate = await SelectItemAsync(services, "表示・更新する項目のIDまたは読みがな: ");
+            var itemToUpdate = await SelectItemAsync(services, "Enter ID or reading of item to view/update: ");
             if (itemToUpdate == null)
             {
                 // SelectItemAsync でエラーメッセージが表示されるため、ここでは追加処理不要です。
@@ -236,9 +241,9 @@ namespace Kotoban.DataManager.Services
             var originalGeneralContext = item.GeneralContext;
             var originalUserNote = item.UserNote;
 
-            Console.WriteLine("新しい値を入力してください（変更しない場合はEnter）:");
+            Console.WriteLine("Enter new values (press Enter to keep current value):");
 
-            var newReading = ConsoleUserInterface.ReadString($"読みがな [{item.Reading}]: ", item.Reading);
+            var newReading = ConsoleUserInterface.ReadString($"Reading [{item.Reading}]: ", item.Reading);
 
             // 読みがなはソートキーとして使用されるため、前後の空白を除去します。
             // 他のフィールドは空白による影響が軽微なため、過度なトリム処理は避けます。
@@ -251,14 +256,14 @@ namespace Kotoban.DataManager.Services
             {
                 if (!await CheckForDuplicatesAsync(services, newReading, item.Id))
                 {
-                    Console.WriteLine("項目の更新をキャンセルしました。");
+                    Console.WriteLine("Item update cancelled.");
                     return;
                 }
             }
 
-            var newExpression = ConsoleUserInterface.ReadString($"表記 [{item.Expression ?? "なし"}]: ", item.Expression);
-            var newGeneralContext = ConsoleUserInterface.ReadString($"一般的なコンテキスト [{item.GeneralContext ?? "なし"}]: ", item.GeneralContext);
-            var newUserNote = ConsoleUserInterface.ReadString($"ユーザーメモ [{item.UserNote ?? "なし"}]: ", item.UserNote);
+            var newExpression = ConsoleUserInterface.ReadString($"Expression [{item.Expression ?? "none"}]: ", item.Expression);
+            var newGeneralContext = ConsoleUserInterface.ReadString($"General Context [{item.GeneralContext ?? "none"}]: ", item.GeneralContext);
+            var newUserNote = ConsoleUserInterface.ReadString($"User Note [{item.UserNote ?? "none"}]: ", item.UserNote);
 
             var dataHasChanged = newReading != originalReading ||
                                  newExpression != originalExpression ||
@@ -282,11 +287,11 @@ namespace Kotoban.DataManager.Services
                 // 低頻度な更新処理での軽微なコスト増加は許容します。
 
                 await repository.UpdateAsync(item);
-                Console.WriteLine("項目を更新しました。");
+                Console.WriteLine("Item updated.");
 
                 if (hadAiContent)
                 {
-                    await AiContentManager.DeleteAiContentAsync(item, services, "項目データが変更されたため、既存のAIコンテンツはクリアされました。");
+                    await AiContentManager.DeleteAiContentAsync(item, services, "Item data was changed, so existing AI content has been cleared.");
                 }
             }
 
@@ -304,16 +309,16 @@ namespace Kotoban.DataManager.Services
             var repository = services.GetRequiredService<IEntryRepository>();
 
             Console.WriteLine();
-            Console.WriteLine("=== 項目の削除 ===");
+            Console.WriteLine("=== Delete Item ===");
 
-            var itemToDelete = await SelectItemAsync(services, "削除する項目のIDまたは読みがな: ");
+            var itemToDelete = await SelectItemAsync(services, "Enter ID or reading of item to delete: ");
             if (itemToDelete == null)
             {
                 // SelectItemAsync でエラーメッセージが表示されるため、ここでは追加処理不要です。
                 return;
             }
 
-            Console.Write($"本当に '{ConsoleUserInterface.GetDisplayText(itemToDelete)}' を削除しますか？ (y/n): ");
+            Console.Write($"Really delete '{ConsoleUserInterface.GetDisplayText(itemToDelete)}'? (y/n): ");
             var confirmation = Console.ReadLine();
 
             if (confirmation?.ToLower() == "y")
@@ -323,11 +328,11 @@ namespace Kotoban.DataManager.Services
                 // completionMessage を null に設定します。
                 await AiContentManager.DeleteAiContentAsync(itemToDelete, services, completionMessage: null);
                 await repository.DeleteAsync(itemToDelete.Id);
-                Console.WriteLine("項目が削除されました。");
+                Console.WriteLine("Item deleted.");
             }
             else
             {
-                Console.WriteLine("削除はキャンセルされました。");
+                Console.WriteLine("Deletion cancelled.");
             }
         }
     }

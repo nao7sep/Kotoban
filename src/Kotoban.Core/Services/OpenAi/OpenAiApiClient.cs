@@ -50,7 +50,7 @@ namespace Kotoban.Core.Services.OpenAi
             requestOptions.Converters.Add(new OpenAiChatRequestConverter());
             var json = JsonSerializer.Serialize(request, requestOptions);
 
-            await dispatcher.InvokeAsync("trace", "request", json);
+            await dispatcher.InvokeAsync("trace", "request", json).ConfigureAwait(false);
 
             using var message = new HttpRequestMessage(HttpMethod.Post, url);
             message.Content = new StringContent(json, Encoding.UTF8, "application/json");
@@ -69,13 +69,13 @@ namespace Kotoban.Core.Services.OpenAi
                 : new CancellationTokenSource(_networkSettings.Timeout);
             var token = cts.Token;
 
-            using HttpResponseMessage response = await client.SendAsync(message, token);
-            var responseBody = await response.Content.ReadAsStringAsync(token);
-            await dispatcher.InvokeAsync("trace", "response", responseBody);
+            using HttpResponseMessage response = await client.SendAsync(message, token).ConfigureAwait(false);
+            var responseBody = await response.Content.ReadAsStringAsync(token).ConfigureAwait(false);
+            await dispatcher.InvokeAsync("trace", "response", responseBody).ConfigureAwait(false);
 
             if (!response.IsSuccessStatusCode)
             {
-                await HandleErrorResponse(response, responseBody, dispatcher);
+                await HandleErrorResponse(response, responseBody, dispatcher).ConfigureAwait(false);
             }
 
             var result = JsonSerializer.Deserialize<OpenAiChatResponse>(responseBody, OpenAiApiJsonOptions.BaseResponseDeserializationOptions);
@@ -107,7 +107,7 @@ namespace Kotoban.Core.Services.OpenAi
             var requestOptions = new JsonSerializerOptions(OpenAiApiJsonOptions.BaseRequestSerializationOptions);
             requestOptions.Converters.Add(new OpenAiImageRequestConverter());
             var json = JsonSerializer.Serialize(request, requestOptions);
-            await dispatcher.InvokeAsync("trace", "request", json);
+            await dispatcher.InvokeAsync("trace", "request", json).ConfigureAwait(false);
 
             using var message = new HttpRequestMessage(HttpMethod.Post, url);
             message.Content = new StringContent(json, Encoding.UTF8, "application/json");
@@ -126,13 +126,13 @@ namespace Kotoban.Core.Services.OpenAi
                 : new CancellationTokenSource(_networkSettings.Timeout);
             var token = cts.Token;
 
-            using HttpResponseMessage response = await client.SendAsync(message, token);
-            var responseBody = await response.Content.ReadAsStringAsync(token);
-            await dispatcher.InvokeAsync("trace", "response", responseBody);
+            using HttpResponseMessage response = await client.SendAsync(message, token).ConfigureAwait(false);
+            var responseBody = await response.Content.ReadAsStringAsync(token).ConfigureAwait(false);
+            await dispatcher.InvokeAsync("trace", "response", responseBody).ConfigureAwait(false);
 
             if (!response.IsSuccessStatusCode)
             {
-                await HandleErrorResponse(response, responseBody, dispatcher);
+                await HandleErrorResponse(response, responseBody, dispatcher).ConfigureAwait(false);
             }
 
             var result = JsonSerializer.Deserialize<OpenAiImageResponse>(responseBody, OpenAiApiJsonOptions.BaseResponseDeserializationOptions);
@@ -152,7 +152,7 @@ namespace Kotoban.Core.Services.OpenAi
         /// <exception cref="OpenAiException">常に投げられる例外</exception>
         private static async Task HandleErrorResponse(HttpResponseMessage response, string responseBody, ActionDispatcher dispatcher)
         {
-            await dispatcher.InvokeAsync("trace", "error", responseBody);
+            await dispatcher.InvokeAsync("trace", "error", responseBody).ConfigureAwait(false);
             OpenAiErrorResponse? error = null;
             try
             {

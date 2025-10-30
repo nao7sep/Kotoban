@@ -23,7 +23,7 @@ namespace Kotoban.Core.Models
         public string Extension { get; set; } = string.Empty;
 
         /// <summary>
-        /// 画像の生成に使用されたプロンプト。
+        /// AIによって修正され、実際に画像生成に使用された最終的なプロンプト。
         /// </summary>
         public string? ImagePrompt { get; set; }
     }

@@ -35,7 +35,10 @@ namespace Kotoban.Core.Services
         public string TempImageFileNamePattern { get; }
 
         /// <summary>
-        /// ImageManagerの新しいインスタンスを初期化します。
+        /// ImageManagerの新しいインスタンスを初期化し、設定に基づいて画像ディレクトリのパスを解決します。
+        ///
+        /// - <see cref="FinalImageDirectory"/> と <see cref="TempImageDirectory"/> のパスを絶対パスに変換します。
+        /// - <see cref="TempImageDirectory"/> が "%TEMP%" の場合、システムの一時フォルダ内に専用のディレクトリパスを生成します。
         /// </summary>
         /// <param name="settings">Kotobanの設定</param>
         public ImageManager(KotobanSettings settings)
@@ -104,7 +107,7 @@ namespace Kotoban.Core.Services
             var tempFileName = string.Format(_settings.TempImageFileNamePattern, entry.Id, "0", extension);
             var tempImagePath = Path.Combine(TempImageDirectory, tempFileName);
 
-            await FileUtils.CopyAsync(currentImagePath, tempImagePath, overwrite: true);
+            await FileUtils.CopyAsync(currentImagePath, tempImagePath, overwrite: true).ConfigureAwait(false);
 
             var result = new SavedImage
             {
@@ -134,7 +137,7 @@ namespace Kotoban.Core.Services
             var tempFileName = string.Format(_settings.TempImageFileNamePattern, entry.Id, attemptNumber, extension);
             var tempImagePath = Path.Combine(TempImageDirectory, tempFileName);
 
-            await File.WriteAllBytesAsync(tempImagePath, imageBytes);
+            await File.WriteAllBytesAsync(tempImagePath, imageBytes).ConfigureAwait(false);
 
             return new SavedImage
             {

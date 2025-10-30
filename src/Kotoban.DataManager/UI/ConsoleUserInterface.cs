@@ -7,6 +7,11 @@ namespace Kotoban.DataManager.UI
 {
     /// <summary>
     /// コンソールでのユーザーインターフェース操作を管理します。
+    ///
+    /// このクラスは、元々 Program.cs に実装されていたメソッド群を、責務に基づいて分割・整理したものです。
+    /// そのため、一部の設計は典型的なクラス設計とは異なる場合がありますが、
+    /// コンソールアプリケーションのUIロジックと機能フローを管理するという目的を達成するために、
+    /// このような静的クラスの構成が採用されています。
     /// </summary>
     internal static class ConsoleUserInterface
     {
@@ -69,27 +74,27 @@ namespace Kotoban.DataManager.UI
         public static void PrintItemDetails(Entry item, bool showTimestamps)
         {
             Console.WriteLine();
-            Console.WriteLine("=== 項目の詳細 ===");
+            Console.WriteLine("=== Item Details ===");
             Console.WriteLine($"ID: {item.Id}");
-            Console.WriteLine($"用語: {GetDisplayText(item)}");
-            Console.WriteLine($"一般的なコンテキスト: {item.GeneralContext ?? "なし"}");
-            Console.WriteLine($"説明生成用のコンテキスト: {item.ExplanationContext ?? "なし"}");
-            Console.WriteLine($"画像生成用のコンテキスト: {item.ImageContext ?? "なし"}");
-            Console.WriteLine($"ユーザーメモ: {item.UserNote ?? "なし"}");
-            Console.WriteLine($"ステータス: {item.Status}");
+            Console.WriteLine($"Term: {GetDisplayText(item)}");
+            Console.WriteLine($"General Context: {item.GeneralContext ?? "none"}");
+            Console.WriteLine($"Context for Explanation Gen: {item.ExplanationContext ?? "none"}");
+            Console.WriteLine($"Context for Image Gen: {item.ImageContext ?? "none"}");
+            Console.WriteLine($"User Note: {item.UserNote ?? "none"}");
+            Console.WriteLine($"Status: {item.Status}");
 
             if (showTimestamps)
             {
                 Console.WriteLine();
-                Console.WriteLine("=== タイムスタンプ ===");
-                Console.WriteLine($"作成日時: {DateTimeUtils.FormatForDisplay(item.CreatedAtUtc)}");
-                Console.WriteLine($"説明生成日時: {DateTimeUtils.FormatNullableForDisplay(item.ExplanationGeneratedAtUtc)}");
-                Console.WriteLine($"画像生成日時: {DateTimeUtils.FormatNullableForDisplay(item.ImageGeneratedAtUtc)}");
-                Console.WriteLine($"承認日時: {DateTimeUtils.FormatNullableForDisplay(item.ApprovedAtUtc)}");
+                Console.WriteLine("=== Timestamps ===");
+                Console.WriteLine($"Created: {DateTimeUtils.FormatForDisplay(item.CreatedAtUtc)}");
+                Console.WriteLine($"Explanation Generated: {DateTimeUtils.FormatNullableForDisplay(item.ExplanationGeneratedAtUtc)}");
+                Console.WriteLine($"Image Generated: {DateTimeUtils.FormatNullableForDisplay(item.ImageGeneratedAtUtc)}");
+                Console.WriteLine($"Approved: {DateTimeUtils.FormatNullableForDisplay(item.ApprovedAtUtc)}");
             }
 
             Console.WriteLine();
-            Console.WriteLine("=== 説明 ===");
+            Console.WriteLine("=== Explanations ===");
             if (item.Explanations.Any())
             {
                 foreach (var kvp in item.Explanations)
@@ -99,13 +104,13 @@ namespace Kotoban.DataManager.UI
             }
             else
             {
-                Console.WriteLine("なし");
+                Console.WriteLine("None");
             }
 
             Console.WriteLine();
-            Console.WriteLine("=== 画像 ===");
-            Console.WriteLine($"画像ファイル名: {item.ImageFileName ?? "なし"}");
-            Console.WriteLine($"画像プロンプト: {item.ImagePrompt ?? "なし"}");
+            Console.WriteLine("=== Image ===");
+            Console.WriteLine($"Image File Name: {item.ImageFileName ?? "none"}");
+            Console.WriteLine($"Image Prompt: {item.ImagePrompt ?? "none"}");
         }
     }
 }
